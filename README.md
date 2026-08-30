@@ -4,9 +4,7 @@ A portfolio-grade full-stack application for managing job applications, tracking
 
 ## Project Status
 
-**Day 1 of 4–5: Foundation**
-
-The repository is being built as a production-minded MVP with a React frontend, FastAPI backend, and PostgreSQL database.
+**Day 2 of 4–5: Backend + Database foundation**
 
 ## Problem
 
@@ -14,17 +12,28 @@ Job seekers often track applications across spreadsheets, browser bookmarks, ema
 
 ## MVP Solution
 
-AI Job Application Tracker will provide a centralized dashboard where a user can create and manage applications, organize companies and roles, track application stages, and later use analytics and AI-assisted features to make the job search more systematic.
+A centralized tracker for applications, companies, roles, statuses, dates, compensation notes, and follow-ups, with analytics and AI-assisted workflows planned only where useful.
 
-## Planned Core Features
+## Current Features
 
-- Application pipeline and status tracking
-- Company, role, location, salary/stipend, and application-date fields
-- Search, filtering, and sorting
-- Follow-up and interview tracking
-- Dashboard analytics
+- React + TypeScript + Vite frontend shell
+- FastAPI backend
+- PostgreSQL connection configuration
+- SQLAlchemy 2.x database layer
+- `job_applications` schema for core application data
+- `/api/health` readiness endpoint
+- `/api/applications` application listing endpoint
+- Environment-based configuration with secrets excluded from Git
+
+## Planned Features
+
+- Application create/update/delete workflows
 - Authentication and protected resources
-- AI-assisted job/resume insights where they provide real value
+- Search, filtering, sorting, and pagination
+- Interview and follow-up tracking
+- Dashboard analytics
+- AI-assisted resume/job insights
+- Automated tests and production deployment
 
 ## Technology Stack
 
@@ -32,36 +41,21 @@ AI Job Application Tracker will provide a centralized dashboard where a user can
 - **Backend:** Python + FastAPI
 - **Database:** PostgreSQL + SQLAlchemy
 - **Validation:** Pydantic
-- **Authentication:** JWT + password hashing (planned)
-- **Testing:** Pytest + frontend testing (planned)
-- **Deployment:** Docker/cloud-ready configuration (planned)
+- **Authentication:** JWT + password hashing (next backend phase)
+- **Testing:** Pytest + frontend testing
+- **Deployment:** Vercel frontend + suitable backend hosting when configured
 
 ## Architecture
 
 ```text
-┌──────────────┐
-│    User      │
-└──────┬───────┘
-       │ HTTPS
-       ▼
-┌──────────────┐
-│ React / Vite │
-│  Frontend    │
-└──────┬───────┘
-       │ REST / JSON
-       ▼
-┌──────────────┐
-│   FastAPI    │
-│   Backend    │
-└──────┬───────┘
-       │ SQLAlchemy
-       ▼
-┌──────────────┐
-│ PostgreSQL   │
-└──────────────┘
+User
+  ↓ HTTPS
+React / Vite
+  ↓ REST / JSON
+FastAPI
+  ↓ SQLAlchemy
+PostgreSQL
 ```
-
-AI services will be introduced only for concrete workflows such as resume/job analysis or application insights.
 
 ## Repository Structure
 
@@ -69,48 +63,39 @@ AI services will be introduced only for concrete workflows such as resume/job an
 .
 ├── backend/
 │   ├── app/
+│   │   ├── routes/
+│   │   │   └── applications.py
+│   │   ├── db.py
+│   │   ├── init_db.py
 │   │   ├── main.py
-│   │   └── __init__.py
+│   │   ├── models.py
+│   │   └── settings.py
 │   ├── requirements.txt
 │   └── .env.example
 ├── frontend/
-│   ├── src/
-│   │   ├── App.tsx
-│   │   ├── main.tsx
-│   │   └── styles.css
-│   ├── index.html
-│   ├── package.json
-│   ├── tsconfig.json
-│   └── vite.config.ts
 ├── .gitignore
 ├── LICENSE
 └── README.md
 ```
 
-## Day 1 Foundation
-
-- Defined the MVP and architecture
-- Established frontend/backend boundaries
-- Added a runnable FastAPI health endpoint
-- Added a React/Vite dashboard shell
-- Added environment configuration examples
-- Documented local setup and the development roadmap
-
 ## Local Setup
 
-### Backend
+### PostgreSQL
+
+Create a database named `job_tracker`, then configure `backend/.env` from `backend/.env.example`.
 
 ```bash
 cd backend
 python -m venv .venv
-# Windows: .venv\Scripts\activate
+# Windows: .venv\\Scripts\\activate
 # macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
+python -m app.init_db
 uvicorn app.main:app --reload
 ```
 
-Backend API: `http://127.0.0.1:8000`  
+Backend: `http://127.0.0.1:8000`  
 API docs: `http://127.0.0.1:8000/docs`
 
 ### Frontend
@@ -123,19 +108,19 @@ npm run dev
 
 Frontend: `http://localhost:5173`
 
-> PostgreSQL integration will be added during the backend/database phase. Do not add production credentials to the repository.
+## Security Notes
 
-## Environment Variables
-
-Backend configuration is documented in `backend/.env.example`. Secrets belong in a local `.env` file and must never be committed.
+- Never commit `.env` files or production credentials.
+- `JWT_SECRET_KEY` must be replaced with a long random secret outside local examples.
+- Authentication and authorization are not yet claimed as implemented.
 
 ## Development Roadmap
 
-- **Day 1:** Foundation and application shell
-- **Day 2:** Database models, migrations, core APIs, authentication
-- **Day 3:** Full frontend/API integration and responsive UX
-- **Day 4:** Analytics, search/filtering, AI-assisted workflow, security and testing
-- **Day 5 (if needed):** Final QA, documentation, screenshots, and portfolio polish
+- **Day 1:** Foundation and application shell ✅
+- **Day 2:** Database layer and core backend foundation 🚧
+- **Day 3:** Authentication, CRUD APIs, and frontend/API integration
+- **Day 4:** Analytics, search/filtering, AI-assisted workflow, security, and testing
+- **Day 5 (if needed):** QA, deployment, documentation, screenshots, and portfolio polish
 
 ## Author
 
