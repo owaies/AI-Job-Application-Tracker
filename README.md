@@ -4,7 +4,7 @@ A portfolio-grade full-stack application for managing job applications, tracking
 
 ## Project Status
 
-**Day 2 of 4–5: Backend + Database foundation**
+**Backend milestone in progress: database + validated CRUD API**
 
 ## Problem
 
@@ -14,26 +14,35 @@ Job seekers often track applications across spreadsheets, browser bookmarks, ema
 
 A centralized tracker for applications, companies, roles, statuses, dates, compensation notes, and follow-ups, with analytics and AI-assisted workflows planned only where useful.
 
-## Current Features
+## Implemented Features
 
 - React + TypeScript + Vite frontend shell
-- FastAPI backend
+- FastAPI backend with automatic OpenAPI documentation
 - PostgreSQL connection configuration
 - SQLAlchemy 2.x database layer
 - `job_applications` schema for core application data
+- Pydantic request/response validation
+- Application list endpoint
+- Application detail endpoint
+- Application create endpoint
+- Application partial-update endpoint
+- Application delete endpoint
+- Status allow-list validation
+- User-scoped queries using a temporary development user until authentication is implemented
 - `/api/health` readiness endpoint
-- `/api/applications` application listing endpoint
 - Environment-based configuration with secrets excluded from Git
 
 ## Planned Features
 
-- Application create/update/delete workflows
-- Authentication and protected resources
+- JWT authentication and protected resources
+- Password hashing and authorization
+- Frontend application management UI
 - Search, filtering, sorting, and pagination
 - Interview and follow-up tracking
 - Dashboard analytics
-- AI-assisted resume/job insights
-- Automated tests and production deployment
+- AI-assisted resume/job insights using a free/open-source or explicitly approved provider
+- Automated tests
+- Free-tier deployment when appropriate
 
 ## Technology Stack
 
@@ -41,9 +50,9 @@ A centralized tracker for applications, companies, roles, statuses, dates, compe
 - **Backend:** Python + FastAPI
 - **Database:** PostgreSQL + SQLAlchemy
 - **Validation:** Pydantic
-- **Authentication:** JWT + password hashing (next backend phase)
-- **Testing:** Pytest + frontend testing
-- **Deployment:** Vercel frontend + suitable backend hosting when configured
+- **Authentication:** JWT + password hashing (planned)
+- **Testing:** Pytest + frontend testing (planned)
+- **Deployment:** Vercel/free-tier services when configured and verified
 
 ## Architecture
 
@@ -69,6 +78,7 @@ PostgreSQL
 │   │   ├── init_db.py
 │   │   ├── main.py
 │   │   ├── models.py
+│   │   ├── schemas.py
 │   │   └── settings.py
 │   ├── requirements.txt
 │   └── .env.example
@@ -77,6 +87,23 @@ PostgreSQL
 ├── LICENSE
 └── README.md
 ```
+
+## API
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/api/health` | Check API readiness |
+| GET | `/api/applications` | List development user's applications |
+| GET | `/api/applications/{id}` | Get one application |
+| POST | `/api/applications` | Create an application |
+| PATCH | `/api/applications/{id}` | Update an application |
+| DELETE | `/api/applications/{id}` | Delete an application |
+
+Interactive API documentation is available at `/docs` when the FastAPI server is running.
+
+### Supported application statuses
+
+`saved`, `applied`, `screening`, `interview`, `offer`, `rejected`, `withdrawn`
 
 ## Local Setup
 
@@ -113,14 +140,15 @@ Frontend: `http://localhost:5173`
 - Never commit `.env` files or production credentials.
 - `JWT_SECRET_KEY` must be replaced with a long random secret outside local examples.
 - Authentication and authorization are not yet claimed as implemented.
+- Application queries are currently scoped to development user ID `1`; this will be replaced by the authenticated user's identity in the authentication milestone.
 
 ## Development Roadmap
 
-- **Day 1:** Foundation and application shell ✅
-- **Day 2:** Database layer and core backend foundation 🚧
-- **Day 3:** Authentication, CRUD APIs, and frontend/API integration
-- **Day 4:** Analytics, search/filtering, AI-assisted workflow, security, and testing
-- **Day 5 (if needed):** QA, deployment, documentation, screenshots, and portfolio polish
+- **Foundation:** React/Vite + FastAPI + database configuration ✅
+- **Backend:** SQLAlchemy model + validated CRUD API 🚧
+- **Next:** Authentication, protected resources, and frontend/API integration
+- **Then:** Analytics, search/filtering, AI-assisted workflow, security, testing
+- **Final:** QA, free-tier deployment where appropriate, documentation, screenshots, presentation, and interview preparation
 
 ## Author
 
