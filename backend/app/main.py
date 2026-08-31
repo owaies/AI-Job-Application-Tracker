@@ -6,7 +6,7 @@ from app.settings import settings
 
 app = FastAPI(
     title="AI Job Application Tracker API",
-    version="0.2.0",
+    version="0.3.0",
     description="Backend API for the AI Job Application Tracker.",
 )
 
