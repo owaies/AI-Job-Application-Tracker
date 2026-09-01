@@ -4,15 +4,7 @@ A portfolio-grade full-stack application for managing job applications, tracking
 
 ## Project Status
 
-**Backend milestone in progress: database + validated CRUD API**
-
-## Problem
-
-Job seekers often track applications across spreadsheets, browser bookmarks, email, and notes. This makes it difficult to see pipeline status, follow-ups, interview history, and overall search performance in one place.
-
-## MVP Solution
-
-A centralized tracker for applications, companies, roles, statuses, dates, compensation notes, and follow-ups, with analytics and AI-assisted workflows planned only where useful.
+**Authentication milestone complete. Core application APIs are protected by JWT authentication.**
 
 ## Implemented Features
 
@@ -20,29 +12,43 @@ A centralized tracker for applications, companies, roles, statuses, dates, compe
 - FastAPI backend with automatic OpenAPI documentation
 - PostgreSQL connection configuration
 - SQLAlchemy 2.x database layer
-- `job_applications` schema for core application data
-- Pydantic request/response validation
-- Application list endpoint
-- Application detail endpoint
-- Application create endpoint
-- Application partial-update endpoint
-- Application delete endpoint
-- Status allow-list validation
-- User-scoped queries using a temporary development user until authentication is implemented
+- User persistence with unique email addresses
+- Secure password hashing with bcrypt
+- JWT access tokens with expiration
+- Register, login, and current-user endpoints
+- Bearer-token authentication dependency
+- User-scoped job application CRUD APIs
+- Application status allow-list validation
 - `/api/health` readiness endpoint
 - Environment-based configuration with secrets excluded from Git
 
-## Planned Features
+## Authentication API
 
-- JWT authentication and protected resources
-- Password hashing and authorization
-- Frontend application management UI
-- Search, filtering, sorting, and pagination
-- Interview and follow-up tracking
-- Dashboard analytics
-- AI-assisted resume/job insights using a free/open-source or explicitly approved provider
-- Automated tests
-- Free-tier deployment when appropriate
+| Method | Endpoint | Purpose |
+|---|---|---|
+| POST | `/api/auth/register` | Create an account and receive a JWT |
+| POST | `/api/auth/login` | Authenticate and receive a JWT |
+| GET | `/api/auth/me` | Return the authenticated user |
+
+Send the token in subsequent requests:
+
+```text
+Authorization: Bearer <access_token>
+```
+
+Application endpoints now require authentication. Each query is scoped to the authenticated user's ID, preventing one user from reading or modifying another user's applications.
+
+## Application API
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/api/applications` | List the authenticated user's applications |
+| GET | `/api/applications/{id}` | Get one owned application |
+| POST | `/api/applications` | Create an application |
+| PATCH | `/api/applications/{id}` | Update an owned application |
+| DELETE | `/api/applications/{id}` | Delete an owned application |
+
+Interactive API documentation is available at `/docs` when the FastAPI server is running.
 
 ## Technology Stack
 
@@ -50,9 +56,8 @@ A centralized tracker for applications, companies, roles, statuses, dates, compe
 - **Backend:** Python + FastAPI
 - **Database:** PostgreSQL + SQLAlchemy
 - **Validation:** Pydantic
-- **Authentication:** JWT + password hashing (planned)
-- **Testing:** Pytest + frontend testing (planned)
-- **Deployment:** Vercel/free-tier services when configured and verified
+- **Authentication:** JWT + bcrypt password hashing
+- **Deployment:** Free-tier deployment planned after integration and QA
 
 ## Architecture
 
@@ -60,56 +65,15 @@ A centralized tracker for applications, companies, roles, statuses, dates, compe
 User
   ↓ HTTPS
 React / Vite
-  ↓ REST / JSON
+  ↓ REST / JSON + Bearer JWT
 FastAPI
   ↓ SQLAlchemy
 PostgreSQL
 ```
 
-## Repository Structure
-
-```text
-.
-├── backend/
-│   ├── app/
-│   │   ├── routes/
-│   │   │   └── applications.py
-│   │   ├── db.py
-│   │   ├── init_db.py
-│   │   ├── main.py
-│   │   ├── models.py
-│   │   ├── schemas.py
-│   │   └── settings.py
-│   ├── requirements.txt
-│   └── .env.example
-├── frontend/
-├── .gitignore
-├── LICENSE
-└── README.md
-```
-
-## API
-
-| Method | Endpoint | Purpose |
-|---|---|---|
-| GET | `/api/health` | Check API readiness |
-| GET | `/api/applications` | List development user's applications |
-| GET | `/api/applications/{id}` | Get one application |
-| POST | `/api/applications` | Create an application |
-| PATCH | `/api/applications/{id}` | Update an application |
-| DELETE | `/api/applications/{id}` | Delete an application |
-
-Interactive API documentation is available at `/docs` when the FastAPI server is running.
-
-### Supported application statuses
-
-`saved`, `applied`, `screening`, `interview`, `offer`, `rejected`, `withdrawn`
-
 ## Local Setup
 
-### PostgreSQL
-
-Create a database named `job_tracker`, then configure `backend/.env` from `backend/.env.example`.
+Create a PostgreSQL database named `job_tracker`, then configure `backend/.env` from `backend/.env.example`. Set `JWT_SECRET_KEY` to a long random value for local use.
 
 ```bash
 cd backend
@@ -137,18 +101,22 @@ Frontend: `http://localhost:5173`
 
 ## Security Notes
 
+- Passwords are never stored in plaintext; only bcrypt hashes are persisted.
+- JWTs have a finite expiration time.
+- Protected application routes derive ownership from the authenticated JWT identity.
+- Invalid, expired, or missing bearer tokens receive `401 Unauthorized`.
+- Duplicate registration attempts receive `409 Conflict`.
+- Input validation is handled by Pydantic and explicit application-status validation.
 - Never commit `.env` files or production credentials.
-- `JWT_SECRET_KEY` must be replaced with a long random secret outside local examples.
-- Authentication and authorization are not yet claimed as implemented.
-- Application queries are currently scoped to development user ID `1`; this will be replaced by the authenticated user's identity in the authentication milestone.
 
-## Development Roadmap
+## Roadmap
 
 - **Foundation:** React/Vite + FastAPI + database configuration ✅
-- **Backend:** SQLAlchemy model + validated CRUD API 🚧
-- **Next:** Authentication, protected resources, and frontend/API integration
-- **Then:** Analytics, search/filtering, AI-assisted workflow, security, testing
-- **Final:** QA, free-tier deployment where appropriate, documentation, screenshots, presentation, and interview preparation
+- **Backend:** SQLAlchemy model + validated CRUD API ✅
+- **Authentication:** Registration, login, JWT, protected resources ✅
+- **Next:** Frontend authentication and application management UI
+- **Then:** Search/filtering, interview and follow-up tracking, analytics, AI-assisted workflow, testing
+- **Final:** QA, free-tier Supabase/Vercel deployment where appropriate, screenshots, presentation, and interview preparation
 
 ## Author
 
