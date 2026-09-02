@@ -9,8 +9,12 @@ export type JobApplication = {
   role: string
   location: string | null
   status: string
+  priority: string
   salary: string | null
   application_date: string
+  follow_up_date: string | null
+  interview_date: string | null
+  next_action: string | null
   notes: string | null
   created_at: string
   updated_at: string
@@ -22,6 +26,15 @@ export type ApplicationAnalytics = {
   interviews: number
   offers: number
   by_status: Record<string, number>
+}
+
+export type SmartAction = {
+  application_id: number
+  company: string
+  role: string
+  priority: string
+  recommendation: string
+  reason: string
 }
 
 type AuthResponse = { access_token: string; token_type: string; user: User }
@@ -54,6 +67,7 @@ export const api = {
     return request<JobApplication[]>(`/api/applications${query ? `?${query}` : ''}`, {}, token)
   },
   analytics: (token: string) => request<ApplicationAnalytics>('/api/applications/analytics', {}, token),
+  smartActions: (token: string) => request<SmartAction[]>('/api/applications/smart-actions', {}, token),
   createApplication: (token: string, data: Partial<JobApplication>) =>
     request<JobApplication>('/api/applications', { method: 'POST', body: JSON.stringify(data) }, token),
   updateApplication: (token: string, id: number, data: Partial<JobApplication>) =>
