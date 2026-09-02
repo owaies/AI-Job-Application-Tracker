@@ -21,7 +21,7 @@ jobs:
           p = Path('frontend/src/App.tsx')
           s = p.read_text()
           old = "  const active = value || placeholder\n"
-          new = '''  const active = value || placeholder\n  if (typeof active !== 'string') {\n    const tag = Object.prototype.toString.call(active)\n    const description = typeof active === 'function' ? `[Function ${active.name || 'anonymous'}]` : String(active)\n    throw new Error(`CustomSelect invalid value: label=${String(label)}; type=${typeof active}; tag=${tag}; value=${description}`)\n  }\n'''
+          new = '''  const active = value || placeholder\n  const runtimeActive: unknown = active\n  if (typeof runtimeActive !== 'string') {\n    const tag = Object.prototype.toString.call(runtimeActive)\n    const description = typeof runtimeActive === 'function' ? `[Function ${runtimeActive.name || 'anonymous'}]` : String(runtimeActive)\n    throw new Error(`CustomSelect invalid value: label=${String(label)}; type=${typeof runtimeActive}; tag=${tag}; value=${description}`)\n  }\n'''
           count = s.count(old)
           if count != 1:
               raise SystemExit(f'Expected exactly one CustomSelect active assignment, found {count}')
@@ -30,7 +30,7 @@ jobs:
           PY
       - name: Verify and build
         run: |
-          grep -n -A5 'const active = value || placeholder' src/App.tsx
+          grep -n -A6 'const active = value || placeholder' src/App.tsx
           npm install --include=dev
           npm run build
         working-directory: frontend
