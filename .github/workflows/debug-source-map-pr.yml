@@ -25,6 +25,7 @@ jobs:
           const path = require('path')
           const { SourceMapConsumer } = require('./node_modules/source-map')
           const mapFile = fs.readdirSync('dist/assets').find(f => f.endsWith('.js.map'))
+          if (!mapFile) throw new Error('No JavaScript source map generated')
           const map = JSON.parse(fs.readFileSync(path.join('dist/assets', mapFile), 'utf8'))
           console.log('MAP_FILE=' + mapFile)
           SourceMapConsumer.with(map, null, consumer => {
@@ -33,6 +34,7 @@ jobs:
             }
           })
           NODE
+        working-directory: frontend
       - name: List every frontend replace call
         run: grep -RIn --exclude-dir=node_modules '\\.replace(' src || true
         working-directory: frontend
