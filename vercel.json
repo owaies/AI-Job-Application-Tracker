@@ -3,7 +3,15 @@
   "services": {
     "frontend": {
       "root": "frontend/",
-      "framework": "vite"
+      "framework": "vite",
+      "routes": [
+        { "src": "/dashboard", "dest": "/index.html" },
+        { "src": "/applications", "dest": "/index.html" },
+        { "src": "/analytics", "dest": "/index.html" },
+        { "src": "/profile", "dest": "/index.html" },
+        { "src": "/login", "dest": "/index.html" },
+        { "src": "/register", "dest": "/index.html" }
+      ]
     },
     "backend": {
       "root": "backend/",
@@ -13,6 +21,6 @@
   },
   "rewrites": [
     { "source": "/api/(.*)", "destination": { "service": "backend" } },
-    { "source": "/(.*)", "destination": { "service": "frontend", "path": "/index.html" } }
+    { "source": "/(.*)", "destination": { "service": "frontend" } }
   ]
 }
