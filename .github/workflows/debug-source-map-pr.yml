@@ -23,17 +23,16 @@ jobs:
           node <<'NODE'
           const fs = require('fs')
           const path = require('path')
-          const { SourceMapConsumer } = require('source-map')
+          const { SourceMapConsumer } = require('./node_modules/source-map')
           const mapFile = fs.readdirSync('dist/assets').find(f => f.endsWith('.js.map'))
           const map = JSON.parse(fs.readFileSync(path.join('dist/assets', mapFile), 'utf8'))
           console.log('MAP_FILE=' + mapFile)
-          const consumer = new SourceMapConsumer(map)
-          for (const [line, column] of [[9, 43552], [9, 44427], [9, 45177]]) {
-            console.log(`GENERATED ${line}:${column} -> ${JSON.stringify(consumer.originalPositionFor({ line, column, bias: SourceMapConsumer.GREATEST_LOWER_BOUND }))}`)
-          }
-          if (consumer.destroy) consumer.destroy()
+          SourceMapConsumer.with(map, null, consumer => {
+            for (const [line, column] of [[9, 43552], [9, 44427], [9, 45177]]) {
+              console.log(`GENERATED ${line}:${column} -> ${JSON.stringify(consumer.originalPositionFor({ line, column, bias: SourceMapConsumer.GREATEST_LOWER_BOUND }))}`)
+            }
+          })
           NODE
-        working-directory: frontend
       - name: List every frontend replace call
         run: grep -RIn --exclude-dir=node_modules '\\.replace(' src || true
         working-directory: frontend
