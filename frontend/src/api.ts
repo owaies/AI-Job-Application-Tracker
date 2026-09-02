@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL ?? '/api'
+const API_URL = ''
 
 export type User = { id: number; email: string; full_name?: string | null }
 
