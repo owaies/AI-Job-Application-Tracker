@@ -51,6 +51,8 @@ export type SmartAction = {
 
 type AuthResponse = { access_token: string; token_type: string; user: User }
 
+const emptyAnalytics: ApplicationAnalytics = { total: 0, active: 0, interviews: 0, offers: 0, by_status: {} }
+
 async function request<T>(path: string, options: RequestInit = {}, token?: string): Promise<T> {
   const method = (options.method ?? 'GET').toUpperCase()
   const dedupeKey = method === 'GET' ? `${path}|${token ?? ''}` : ''
@@ -96,21 +98,47 @@ async function request<T>(path: string, options: RequestInit = {}, token?: strin
   return run
 }
 
+function isRecoverableDataError(error: unknown) {
+  return !(error instanceof ApiError) || error.status !== 401
+}
+
 export const api = {
   register: (email: string, password: string, fullName: string) =>
     request<AuthResponse>('/api/auth/register', { method: 'POST', body: JSON.stringify({ email, password, full_name: fullName }) }),
   login: (email: string, password: string) =>
     request<AuthResponse>('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
   me: (token: string) => request<User>('/api/auth/me', {}, token),
-  applications: (token: string, search = '', status = '') => {
+  applications: async (token: string, search = '', status = '') => {
     const params = new URLSearchParams()
     if (search.trim()) params.set('search', search.trim())
     if (status) params.set('status', status)
     const query = params.toString()
-    return request<JobApplication[]>(`/api/applications${query ? `?${query}` : ''}`, {}, token)
+    try {
+      return await request<JobApplication[]>(`/api/applications${query ? `?${query}` : ''}`, {}, token)
+    } catch (error) {
+      if (!isRecoverableDataError(error)) throw error
+      console.error('Applications request failed', error)
+      return []
+    }
   },
-  analytics: (token: string) => request<ApplicationAnalytics>('/api/applications/analytics', {}, token),
-  smartActions: (token: string) => request<SmartAction[]>('/api/applications/smart-actions', {}, token),
+  analytics: async (token: string) => {
+    try {
+      return await request<ApplicationAnalytics>('/api/applications/analytics', {}, token)
+    } catch (error) {
+      if (!isRecoverableDataError(error)) throw error
+      console.error('Analytics request failed', error)
+      return emptyAnalytics
+    }
+  },
+  smartActions: async (token: string) => {
+    try {
+      return await request<SmartAction[]>('/api/applications/smart-actions', {}, token)
+    } catch (error) {
+      if (!isRecoverableDataError(error)) throw error
+      console.error('Smart actions request failed', error)
+      return []
+    }
+  },
   createApplication: (token: string, data: Partial<JobApplication>) =>
     request<JobApplication>('/api/applications', { method: 'POST', body: JSON.stringify(data) }, token),
   updateApplication: (token: string, id: number, data: Partial<JobApplication>) =>
