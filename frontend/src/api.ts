@@ -46,6 +46,11 @@ async function request<T>(path: string, options: RequestInit = {}, token?: strin
 
   const response = await fetch(`${API_URL}${path}`, { ...options, headers })
   if (!response.ok) {
+    if (response.status === 401 && token) {
+      localStorage.removeItem('job-tracker-token')
+      window.location.assign('/login')
+      throw new Error('Your session expired. Please sign in again.')
+    }
     const body = await response.json().catch(() => ({}))
     throw new Error(body.detail ?? 'Request failed')
   }
