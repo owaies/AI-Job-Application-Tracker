@@ -15,7 +15,7 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> dict:
     email = payload.email.lower()
     if db.scalar(select(User).where(User.email == email)) is not None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email is already registered")
-    user = User(email=email, password_hash=hash_password(payload.password))
+    user = User(email=email, password_hash=hash_password(payload.password), full_name=payload.full_name)
     db.add(user)
     db.commit()
     db.refresh(user)
