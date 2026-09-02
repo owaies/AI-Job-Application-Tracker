@@ -1,5 +1,4 @@
 import { Component, ErrorInfo, ReactNode } from 'react'
-import { ButtonHTMLAttributes } from 'react'
 
 type Props = { children: ReactNode }
 type State = { hasError: boolean; message: string }
