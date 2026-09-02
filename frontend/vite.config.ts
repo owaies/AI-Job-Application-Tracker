@@ -5,3 +5,5 @@ export default defineConfig({
     sourcemap: true,
   },
 })
+
+// Debug build: keep source maps available while tracing the production render exception.
