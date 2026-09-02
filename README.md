@@ -2,38 +2,40 @@
 
 A full-stack workspace for managing job applications, tracking pipeline progress, and preparing the foundation for AI-assisted job-search insights.
 
-## Day 3 implementation
+## Current implementation
 
-The React frontend now includes a working authentication flow and application-management dashboard backed by the protected FastAPI API.
+The React frontend is connected to a protected FastAPI API and now provides application management plus pipeline analytics.
 
-### Implemented
+### Features implemented
 
 - Account registration and login
-- JWT stored locally for the current browser session
-- Authenticated user lookup
-- Protected application listing
-- Create application form
-- Application pipeline cards
-- Status overview counters
-- Sign out flow
-- API error/loading states
-- Responsive layout for desktop and mobile
+- JWT authentication with protected API resources
+- User-scoped application data
+- Create, edit, and delete applications
+- Application status pipeline
+- Search by company, role, or location
+- Filter applications by status
+- Pipeline summary cards for total, active, interviews, and offers
+- Status breakdown analytics
+- API loading, empty, validation, and error states
+- Responsive desktop/mobile interface
 
 ## Architecture
 
 ```text
-React + TypeScript
-       |
-       | REST / JSON + Bearer JWT
-       v
-FastAPI
-  |        |
-  |        +--> Authentication
-  |
-  +------> SQLAlchemy
-             |
-             v
-         PostgreSQL
+React + TypeScript + Vite
+          |
+          | REST / JSON + Bearer JWT
+          v
+       FastAPI
+       /     \
+      /       \
+Authentication  Application API
+                    |
+                SQLAlchemy
+                    |
+                    v
+                PostgreSQL
 ```
 
 ## Backend API
@@ -46,13 +48,14 @@ FastAPI
 
 ### Applications
 
-- `GET /api/applications` - list the current user's applications
+- `GET /api/applications` - list applications; supports `search` and `status` query parameters
 - `GET /api/applications/{id}` - fetch one application
 - `POST /api/applications` - create an application
 - `PATCH /api/applications/{id}` - update an application
 - `DELETE /api/applications/{id}` - delete an application
+- `GET /api/applications/analytics` - return user-scoped pipeline totals and status counts
 
-All application routes require a valid Bearer JWT.
+All application routes require a valid Bearer JWT. Application reads and mutations are restricted to the authenticated user's records.
 
 ## Tech stack
 
@@ -97,12 +100,19 @@ Set `VITE_API_URL` when the API is not running at the default local URL.
 1. Foundation and architecture - complete
 2. Database and CRUD API - complete
 3. Authentication and frontend integration - complete
-4. Search, filters, analytics, and AI-assisted features
-5. Automated tests, security hardening, deployment, and final documentation
+4. Search, filters, analytics, and application management - complete
+5. AI-assisted workflow, automated tests, security hardening, deployment, and final documentation
 
 ## Security notes
 
-Secrets belong in environment variables and must never be committed. JWT-protected endpoints enforce user ownership at the database query level.
+- Secrets belong in environment variables and must never be committed.
+- Passwords are stored as bcrypt hashes rather than plaintext.
+- JWT-protected endpoints identify the current user before accessing application records.
+- Search and status filters operate only within the authenticated user's application scope.
+
+## Deployment
+
+Production deployment has not yet been claimed. Vercel and Supabase configuration will be documented only after the corresponding free-tier setup and deployment are actually verified.
 
 ## License
 
