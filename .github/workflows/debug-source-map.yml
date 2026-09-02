@@ -1,0 +1,51 @@
+name: Debug production source map
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  map-production-stack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install frontend dependencies
+        run: npm install --include=dev
+        working-directory: frontend
+      - name: Install source-map parser
+        run: npm install --no-save source-map@0.7.6
+        working-directory: frontend
+      - name: Build production bundle
+        run: npm run build
+        working-directory: frontend
+      - name: Map browser stack locations to original source
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+          const { SourceMapConsumer } = require('./node_modules/source-map');
+          const assets = fs.readdirSync('dist/assets');
+          const mapFile = assets.find(f => f.endsWith('.js.map'));
+          if (!mapFile) throw new Error('No JavaScript source map generated');
+          const map = JSON.parse(fs.readFileSync(path.join('dist/assets', mapFile), 'utf8'));
+          const targets = [
+            [9, 43552],
+            [9, 44427],
+            [9, 45177],
+          ];
+          console.log('MAP_FILE=' + mapFile);
+          console.log('SOURCES=' + JSON.stringify(map.sources));
+          SourceMapConsumer.with(map, null, consumer => {
+            for (const [line, column] of targets) {
+              const pos = consumer.originalPositionFor({ line, column, bias: SourceMapConsumer.GREATEST_LOWER_BOUND });
+              console.log(`GENERATED ${line}:${column} -> ${JSON.stringify(pos)}`);
+            }
+          });
+          NODE
+      - name: Enumerate frontend replace calls
+        run: |
+          grep -RIn --exclude-dir=node_modules '\.replace(' src || true
+        working-directory: frontend
