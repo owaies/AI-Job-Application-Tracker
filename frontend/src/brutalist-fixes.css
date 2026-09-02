@@ -1,0 +1,40 @@
+/* Final responsive polish layer. Kept separate so the core design system stays easy to maintain. */
+.app-card { border: 3px solid var(--ink); background: var(--white); padding: 16px; margin-top: 10px; box-shadow: 5px 5px 0 var(--ink); }
+.app-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; border-bottom: 2px solid var(--ink); padding-bottom: 13px; }
+.app-card-top .company { display: block; color: var(--ink); font: 700 .68rem 'Space Mono', monospace; letter-spacing: .06em; text-transform: uppercase; }
+.app-card-top h3 { margin: 5px 0 4px; font-size: 1.25rem; }
+.app-card-top p { margin: 0; font-size: .72rem; }
+.app-meta { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 14px 0; }
+.app-meta > span { min-width: 0; padding: 9px; border: 2px dashed var(--ink); }
+.app-meta small { display: block; margin-bottom: 6px; }
+.app-meta strong { display: block; font: 700 .68rem 'Space Mono', monospace; overflow-wrap: anywhere; }
+.card-actions { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 12px; border-top: 2px solid var(--ink); }
+.card-actions .btn { flex: 0 0 auto; }
+.error-banner { border: 3px solid var(--ink); background: var(--pink); color: var(--ink); padding: 12px 14px; font: 800 .78rem 'Space Mono', monospace; }
+.error-banner button { color: var(--ink); }
+.loading-skeleton { position: relative; overflow: hidden; background: #d9d8d0; border: 3px solid var(--ink); min-height: 80px; }
+.loading-skeleton::after { content: ''; position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, rgba(255,255,255,.7), transparent); animation: skeleton-sweep 1.1s infinite; }
+@keyframes skeleton-sweep { to { transform: translateX(100%); } }
+
+@media (max-width: 760px) {
+  .app-card { padding: 13px; box-shadow: 4px 4px 0 var(--ink); }
+  .app-card-top { flex-direction: column; }
+  .app-card-top .badge { align-self: flex-start; }
+  .app-meta { grid-template-columns: 1fr 1fr; }
+  .card-actions .btn { flex: 1 1 90px; min-width: 0; }
+  .chart-card { padding: 16px; overflow: hidden; }
+  .chart-card h2 { font-size: 1.45rem; }
+  .bar-chart { height: 220px; min-width: 0; padding: 10px 7px; gap: 4px; }
+  .bar-col span { font-size: .55rem; }
+  .bar-col small { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+}
+
+@media (max-width: 430px) {
+  .app-card-top h3 { font-size: 1.1rem; }
+  .app-meta { grid-template-columns: 1fr 1fr; gap: 6px; }
+  .app-meta > span { padding: 8px; }
+  .card-actions { display: grid; grid-template-columns: 1fr 1fr; }
+  .card-actions .btn-danger { grid-column: 1 / -1; }
+  .bar-chart { height: 190px; }
+  .bar-col small { font-size: .48rem; }
+}
