@@ -24,6 +24,12 @@ def _validate_priority(value: str) -> None:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Invalid priority. Expected one of: {allowed}")
 
 
+def _as_utc(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value.astimezone(timezone.utc)
+
+
 def _get_application(application_id: int, user_id: int, db: Session) -> JobApplication:
     application = db.scalar(select(JobApplication).where(JobApplication.id == application_id, JobApplication.user_id == user_id))
     if application is None:
@@ -32,12 +38,7 @@ def _get_application(application_id: int, user_id: int, db: Session) -> JobAppli
 
 
 @router.get("", response_model=list[JobApplicationRead])
-def list_applications(
-    search: str | None = Query(default=None, max_length=100),
-    status_filter: str | None = Query(default=None, alias="status", max_length=40),
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-) -> list[JobApplication]:
+def list_applications(search: str | None = Query(default=None, max_length=100), status_filter: str | None = Query(default=None, alias="status", max_length=40), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> list[JobApplication]:
     query = select(JobApplication).where(JobApplication.user_id == current_user.id)
     if search:
         term = f"%{search.strip()}%"
@@ -50,11 +51,7 @@ def list_applications(
 
 @router.get("/analytics")
 def application_analytics(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, object]:
-    rows = db.execute(
-        select(JobApplication.status, func.count(JobApplication.id))
-        .where(JobApplication.user_id == current_user.id)
-        .group_by(JobApplication.status)
-    ).all()
+    rows = db.execute(select(JobApplication.status, func.count(JobApplication.id)).where(JobApplication.user_id == current_user.id).group_by(JobApplication.status)).all()
     counts = {status_name: 0 for status_name in APPLICATION_STATUSES}
     for status_name, count in rows:
         counts[status_name] = count
@@ -70,11 +67,13 @@ def smart_actions(current_user: User = Depends(get_current_user), db: Session = 
     applications = list(db.scalars(select(JobApplication).where(JobApplication.user_id == current_user.id)))
     recommendations: list[SmartAction] = []
     for item in applications:
+        follow_up_date = _as_utc(item.follow_up_date)
+        interview_date = _as_utc(item.interview_date)
         if item.status in {"rejected", "withdrawn", "offer"}:
             continue
-        if item.interview_date and item.interview_date >= now:
+        if interview_date and interview_date >= now:
             recommendation, reason = "Prepare interview questions and company research", "An upcoming interview is scheduled."
-        elif item.follow_up_date and item.follow_up_date <= now:
+        elif follow_up_date and follow_up_date <= now:
             recommendation, reason = "Send a follow-up message", "The follow-up date is due."
         elif item.status == "interview":
             recommendation, reason = "Add the interview date and preparation notes", "The application is at the interview stage."
