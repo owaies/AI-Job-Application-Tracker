@@ -22,3 +22,22 @@ jobs:
         run: npm install --include=dev
       - name: Build
         run: npm run build
+      - name: Map production stack locations
+        run: |
+          npm install --no-save source-map@0.7.6
+          node <<'NODE'
+          const fs = require('fs')
+          const path = require('path')
+          const { SourceMapConsumer } = require('source-map')
+          const mapFile = fs.readdirSync('dist/assets').find(f => f.endsWith('.js.map'))
+          if (!mapFile) throw new Error('No JavaScript source map generated')
+          const map = JSON.parse(fs.readFileSync(path.join('dist/assets', mapFile), 'utf8'))
+          console.log('MAP_FILE=' + mapFile)
+          const consumer = new SourceMapConsumer(map)
+          for (const [line, column] of [[9, 43552], [9, 44427], [9, 45177]]) {
+            console.log(`GENERATED ${line}:${column} -> ${JSON.stringify(consumer.originalPositionFor({ line, column, bias: SourceMapConsumer.GREATEST_LOWER_BOUND }))}`)
+          }
+          if (consumer.destroy) consumer.destroy()
+          NODE
+      - name: Enumerate frontend replace calls
+        run: grep -RIn --exclude-dir=node_modules '\\.replace(' src || true
