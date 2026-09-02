@@ -1,0 +1,147 @@
+/* JobTrack mobile rendering safety layer.
+   Layout containers may flow and scroll; decorative layers never control geometry. */
+
+html,
+body,
+#root {
+  width: 100%;
+  min-width: 0;
+  min-height: 100%;
+}
+
+body {
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+#root {
+  overflow: visible;
+}
+
+.site {
+  width: 100%;
+  min-width: 0;
+  min-height: 100dvh;
+  overflow: visible;
+}
+
+.app-content {
+  width: min(1420px, calc(100% - 24px));
+  max-width: 100%;
+  min-width: 0;
+  margin-inline: auto;
+  position: relative;
+  transform: none;
+}
+
+.app-content > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.hero,
+.panel,
+.chart-card,
+.application-table,
+.profile-card,
+.dossier-main,
+.dossier-side,
+.filter-bar,
+.stat-grid,
+.pipeline,
+.split-grid,
+.analytics-grid,
+.dossier-grid {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.smart-item,
+.smart-copy,
+.smart-side,
+.section-title,
+.date-row,
+.recent-row,
+.table-row,
+.form-group,
+.two-col {
+  min-width: 0;
+}
+
+.smart-copy,
+.smart-copy h3,
+.smart-copy p,
+.date-row > span,
+.recent-row > span,
+.identity {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* Decorations stay decorative and cannot intercept or alter layout. */
+.paper-grid,
+.auth-grid-art,
+.hero::before {
+  pointer-events: none;
+}
+
+@media (max-width: 760px) {
+  .app-content {
+    width: calc(100% - 24px);
+    padding-bottom: 56px;
+  }
+
+  .navbar {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .nav-links {
+    max-width: 100%;
+  }
+
+  .hero,
+  .panel,
+  .chart-card,
+  .application-table,
+  .profile-card {
+    width: 100%;
+  }
+
+  .hero {
+    min-height: 0;
+  }
+
+  .stat-grid,
+  .pipeline,
+  .split-grid,
+  .analytics-grid,
+  .dossier-grid,
+  .filter-bar,
+  .two-col {
+    width: 100%;
+  }
+}
+
+@media (max-width: 430px) {
+  .app-content {
+    width: calc(100% - 18px);
+  }
+
+  .page-head,
+  .section-title {
+    min-width: 0;
+  }
+
+  .page-head h1,
+  .dossier-head h1 {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-content {
+    scroll-behavior: auto;
+  }
+}
