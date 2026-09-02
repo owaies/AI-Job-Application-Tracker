@@ -1,24 +1,32 @@
 # AI Job Application Tracker
 
-A full-stack workspace for managing job applications, tracking pipeline progress, and preparing the foundation for AI-assisted job-search insights.
+A full-stack job-search command center for managing applications, tracking pipeline progress, planning follow-ups/interviews, and surfacing deterministic next actions.
 
-## Current implementation
+## Why this project?
 
-The React frontend is connected to a protected FastAPI API and now provides application management plus pipeline analytics.
+Job searches often become a spreadsheet of forgotten applications, recruiter messages, interview dates, and follow-ups. This project turns that scattered process into a secure, user-scoped application pipeline with searchable records and actionable insights.
 
-### Features implemented
+## Features
 
 - Account registration and login
-- JWT authentication with protected API resources
+- JWT authentication with bcrypt password hashing
+- Optional profile name stored with the account
 - User-scoped application data
 - Create, edit, and delete applications
-- Application status pipeline
+- Status pipeline: saved, applied, screening, interview, offer, rejected, withdrawn
+- Priority levels: low, medium, high
 - Search by company, role, or location
 - Filter applications by status
-- Pipeline summary cards for total, active, interviews, and offers
+- Follow-up and interview date tracking
+- Next-action notes per application
+- Pipeline summary: total, active, interviews, offers
 - Status breakdown analytics
-- API loading, empty, validation, and error states
+- Smart next-action recommendations based on status, priority, and dates
+- Loading, empty, validation, and error states
 - Responsive desktop/mobile interface
+- Automated backend tests and frontend build checks through GitHub Actions
+
+> The smart-action feature is deterministic business logic, not a paid LLM call. This keeps the repository runnable without an external AI bill while leaving room for an optional AI provider integration later.
 
 ## Architecture
 
@@ -38,32 +46,63 @@ Authentication  Application API
                 PostgreSQL
 ```
 
-## Backend API
+## Data model
+
+### users
+
+- `id` primary key
+- `email` unique, indexed
+- `password_hash`
+- `full_name`
+- `created_at`
+
+### job_applications
+
+- `id` primary key
+- `user_id` owner identifier
+- `company`, `role`, `location`
+- `status`, `priority`
+- `salary`
+- `application_date`
+- `follow_up_date`, `interview_date`
+- `next_action`, `notes`
+- `created_at`, `updated_at`
+
+Existing PostgreSQL databases must run `backend/migrations/20260902_add_tracking_fields.sql` once after updating the application. Fresh databases created from the SQLAlchemy models include the new columns automatically.
+
+## API
+
+### System
+
+- `GET /api/health` - health check
 
 ### Authentication
 
-- `POST /api/auth/register` - create an account
-- `POST /api/auth/login` - authenticate and receive an access token
+- `POST /api/auth/register` - create an account and receive a JWT
+- `POST /api/auth/login` - authenticate and receive a JWT
 - `GET /api/auth/me` - return the authenticated user
 
 ### Applications
 
-- `GET /api/applications` - list applications; supports `search` and `status` query parameters
+- `GET /api/applications` - list applications; supports `search` and `status`
 - `GET /api/applications/{id}` - fetch one application
 - `POST /api/applications` - create an application
 - `PATCH /api/applications/{id}` - update an application
 - `DELETE /api/applications/{id}` - delete an application
-- `GET /api/applications/analytics` - return user-scoped pipeline totals and status counts
+- `GET /api/applications/analytics` - user-scoped pipeline totals and status counts
+- `GET /api/applications/smart-actions` - user-scoped next-action recommendations
 
-All application routes require a valid Bearer JWT. Application reads and mutations are restricted to the authenticated user's records.
+All application routes require a valid Bearer JWT. Records are always queried using the authenticated user's ID, preventing one user from reading or modifying another user's applications.
 
 ## Tech stack
 
 - Frontend: React, TypeScript, Vite
 - Backend: Python, FastAPI, Pydantic
-- ORM: SQLAlchemy
+- ORM: SQLAlchemy 2.x
 - Database: PostgreSQL
-- Authentication: JWT + bcrypt password hashing
+- Authentication: JWT + bcrypt
+- Testing: pytest + FastAPI TestClient
+- CI: GitHub Actions
 
 ## Local setup
 
@@ -77,13 +116,15 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-Create `backend/.env` from the documented environment variables and configure a PostgreSQL database, then run:
+Create `backend/.env` using the values in `backend/.env.example`. Configure a PostgreSQL database, then run any required migration from `backend/migrations/`.
+
+Start the API:
 
 ```bash
 uvicorn app.main:app --reload
 ```
 
-API docs are available at `http://127.0.0.1:8000/docs` while the backend is running.
+API docs: `http://127.0.0.1:8000/docs`
 
 ### Frontend
 
@@ -95,24 +136,69 @@ npm run dev
 
 Set `VITE_API_URL` when the API is not running at the default local URL.
 
-## Development roadmap
+## Testing
 
-1. Foundation and architecture - complete
-2. Database and CRUD API - complete
-3. Authentication and frontend integration - complete
-4. Search, filters, analytics, and application management - complete
-5. AI-assisted workflow, automated tests, security hardening, deployment, and final documentation
+Backend tests live in `backend/tests/test_api.py` and cover:
 
-## Security notes
+- Health endpoint
+- Registration and authenticated `/me`
+- Application create/read/update/delete
+- Search
+- Analytics
+- Smart-action recommendations
+- User isolation
+- Status and priority validation
 
-- Secrets belong in environment variables and must never be committed.
-- Passwords are stored as bcrypt hashes rather than plaintext.
-- JWT-protected endpoints identify the current user before accessing application records.
-- Search and status filters operate only within the authenticated user's application scope.
+Run locally with:
+
+```bash
+cd backend
+pytest -q
+```
+
+GitHub Actions also runs the backend test suite and frontend production build on pushes to `main` and pull requests. Results are intentionally not claimed here unless the corresponding GitHub Actions run has completed successfully.
+
+## Security
+
+- Never commit `.env` files, API keys, passwords, database credentials, or service-role secrets.
+- Passwords are stored as bcrypt hashes.
+- Protected endpoints require a Bearer JWT.
+- Application queries are scoped to the authenticated user.
+- Input lengths and application status/priority values are validated server-side.
+- CORS is configured through environment settings.
 
 ## Deployment
 
-Production deployment has not yet been claimed. Vercel and Supabase configuration will be documented only after the corresponding free-tier setup and deployment are actually verified.
+A production deployment is not claimed yet. The connected Vercel account currently has projects for other repositories, but no Vercel project linked to this repository. No unrelated project was deployed or modified.
+
+For a production deployment, connect this repository to a free Vercel project for the frontend and configure `VITE_API_URL` to a verified production API. The FastAPI backend also requires a production host and PostgreSQL connection. No paid service or billing upgrade is required by the repository itself.
+
+## Project status
+
+### Complete
+
+- Foundation and architecture
+- PostgreSQL/SQLAlchemy data model
+- CRUD API
+- JWT authentication
+- React frontend integration
+- Search and filtering
+- Edit/delete workflow
+- Analytics dashboard
+- Follow-up/interview tracking
+- Priority management
+- Smart next-action recommendations
+- Automated backend tests
+- Frontend build CI
+- Security and setup documentation
+
+### Optional future scope
+
+- Calendar integration for interview dates
+- Email/reminder notifications
+- CSV/JSON export
+- Optional LLM-powered resume/job matching or application coaching using a user-supplied API key
+- Production deployment after a suitable free-tier backend host and database are configured
 
 ## License
 
