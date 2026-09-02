@@ -1,0 +1,48 @@
+const API_URL = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000'
+
+export type User = { id: number; email: string; full_name: string | null }
+
+export type JobApplication = {
+  id: number
+  user_id: number
+  company: string
+  role: string
+  location: string | null
+  status: string
+  salary: string | null
+  application_date: string
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+type AuthResponse = { access_token: string; token_type: string }
+
+async function request<T>(path: string, options: RequestInit = {}, token?: string): Promise<T> {
+  const headers = new Headers(options.headers)
+  headers.set('Content-Type', 'application/json')
+  if (token) headers.set('Authorization', `Bearer ${token}`)
+
+  const response = await fetch(`${API_URL}${path}`, { ...options, headers })
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}))
+    throw new Error(body.detail ?? 'Request failed')
+  }
+  if (response.status === 204) return undefined as T
+  return response.json()
+}
+
+export const api = {
+  register: (email: string, password: string, fullName: string) =>
+    request<AuthResponse>('/api/auth/register', { method: 'POST', body: JSON.stringify({ email, password, full_name: fullName }) }),
+  login: (email: string, password: string) =>
+    request<AuthResponse>('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+  me: (token: string) => request<User>('/api/auth/me', {}, token),
+  applications: (token: string) => request<JobApplication[]>('/api/applications', {}, token),
+  createApplication: (token: string, data: Partial<JobApplication>) =>
+    request<JobApplication>('/api/applications', { method: 'POST', body: JSON.stringify(data) }, token),
+  updateApplication: (token: string, id: number, data: Partial<JobApplication>) =>
+    request<JobApplication>(`/api/applications/${id}`, { method: 'PATCH', body: JSON.stringify(data) }, token),
+  deleteApplication: (token: string, id: number) =>
+    request<void>(`/api/applications/${id}`, { method: 'DELETE' }, token),
+}

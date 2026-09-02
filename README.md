@@ -1,79 +1,70 @@
 # AI Job Application Tracker
 
-A portfolio-grade full-stack application for managing job applications, tracking pipeline progress, and preparing for AI-assisted job search workflows.
+A full-stack workspace for managing job applications, tracking pipeline progress, and preparing the foundation for AI-assisted job-search insights.
 
-## Project Status
+## Day 3 implementation
 
-**Authentication milestone complete. Core application APIs are protected by JWT authentication.**
+The React frontend now includes a working authentication flow and application-management dashboard backed by the protected FastAPI API.
 
-## Implemented Features
+### Implemented
 
-- React + TypeScript + Vite frontend shell
-- FastAPI backend with automatic OpenAPI documentation
-- PostgreSQL connection configuration
-- SQLAlchemy 2.x database layer
-- User persistence with unique email addresses
-- Secure password hashing with bcrypt
-- JWT access tokens with expiration
-- Register, login, and current-user endpoints
-- Bearer-token authentication dependency
-- User-scoped job application CRUD APIs
-- Application status allow-list validation
-- `/api/health` readiness endpoint
-- Environment-based configuration with secrets excluded from Git
-
-## Authentication API
-
-| Method | Endpoint | Purpose |
-|---|---|---|
-| POST | `/api/auth/register` | Create an account and receive a JWT |
-| POST | `/api/auth/login` | Authenticate and receive a JWT |
-| GET | `/api/auth/me` | Return the authenticated user |
-
-Send the token in subsequent requests:
-
-```text
-Authorization: Bearer <access_token>
-```
-
-Application endpoints now require authentication. Each query is scoped to the authenticated user's ID, preventing one user from reading or modifying another user's applications.
-
-## Application API
-
-| Method | Endpoint | Purpose |
-|---|---|---|
-| GET | `/api/applications` | List the authenticated user's applications |
-| GET | `/api/applications/{id}` | Get one owned application |
-| POST | `/api/applications` | Create an application |
-| PATCH | `/api/applications/{id}` | Update an owned application |
-| DELETE | `/api/applications/{id}` | Delete an owned application |
-
-Interactive API documentation is available at `/docs` when the FastAPI server is running.
-
-## Technology Stack
-
-- **Frontend:** React + TypeScript + Vite
-- **Backend:** Python + FastAPI
-- **Database:** PostgreSQL + SQLAlchemy
-- **Validation:** Pydantic
-- **Authentication:** JWT + bcrypt password hashing
-- **Deployment:** Free-tier deployment planned after integration and QA
+- Account registration and login
+- JWT stored locally for the current browser session
+- Authenticated user lookup
+- Protected application listing
+- Create application form
+- Application pipeline cards
+- Status overview counters
+- Sign out flow
+- API error/loading states
+- Responsive layout for desktop and mobile
 
 ## Architecture
 
 ```text
-User
-  ↓ HTTPS
-React / Vite
-  ↓ REST / JSON + Bearer JWT
+React + TypeScript
+       |
+       | REST / JSON + Bearer JWT
+       v
 FastAPI
-  ↓ SQLAlchemy
-PostgreSQL
+  |        |
+  |        +--> Authentication
+  |
+  +------> SQLAlchemy
+             |
+             v
+         PostgreSQL
 ```
 
-## Local Setup
+## Backend API
 
-Create a PostgreSQL database named `job_tracker`, then configure `backend/.env` from `backend/.env.example`. Set `JWT_SECRET_KEY` to a long random value for local use.
+### Authentication
+
+- `POST /api/auth/register` - create an account
+- `POST /api/auth/login` - authenticate and receive an access token
+- `GET /api/auth/me` - return the authenticated user
+
+### Applications
+
+- `GET /api/applications` - list the current user's applications
+- `GET /api/applications/{id}` - fetch one application
+- `POST /api/applications` - create an application
+- `PATCH /api/applications/{id}` - update an application
+- `DELETE /api/applications/{id}` - delete an application
+
+All application routes require a valid Bearer JWT.
+
+## Tech stack
+
+- Frontend: React, TypeScript, Vite
+- Backend: Python, FastAPI, Pydantic
+- ORM: SQLAlchemy
+- Database: PostgreSQL
+- Authentication: JWT + bcrypt password hashing
+
+## Local setup
+
+### Backend
 
 ```bash
 cd backend
@@ -81,13 +72,15 @@ python -m venv .venv
 # Windows: .venv\\Scripts\\activate
 # macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env
-python -m app.init_db
+```
+
+Create `backend/.env` from the documented environment variables and configure a PostgreSQL database, then run:
+
+```bash
 uvicorn app.main:app --reload
 ```
 
-Backend: `http://127.0.0.1:8000`  
-API docs: `http://127.0.0.1:8000/docs`
+API docs are available at `http://127.0.0.1:8000/docs` while the backend is running.
 
 ### Frontend
 
@@ -97,32 +90,20 @@ npm install
 npm run dev
 ```
 
-Frontend: `http://localhost:5173`
+Set `VITE_API_URL` when the API is not running at the default local URL.
 
-## Security Notes
+## Development roadmap
 
-- Passwords are never stored in plaintext; only bcrypt hashes are persisted.
-- JWTs have a finite expiration time.
-- Protected application routes derive ownership from the authenticated JWT identity.
-- Invalid, expired, or missing bearer tokens receive `401 Unauthorized`.
-- Duplicate registration attempts receive `409 Conflict`.
-- Input validation is handled by Pydantic and explicit application-status validation.
-- Never commit `.env` files or production credentials.
+1. Foundation and architecture - complete
+2. Database and CRUD API - complete
+3. Authentication and frontend integration - complete
+4. Search, filters, analytics, and AI-assisted features
+5. Automated tests, security hardening, deployment, and final documentation
 
-## Roadmap
+## Security notes
 
-- **Foundation:** React/Vite + FastAPI + database configuration ✅
-- **Backend:** SQLAlchemy model + validated CRUD API ✅
-- **Authentication:** Registration, login, JWT, protected resources ✅
-- **Next:** Frontend authentication and application management UI
-- **Then:** Search/filtering, interview and follow-up tracking, analytics, AI-assisted workflow, testing
-- **Final:** QA, free-tier Supabase/Vercel deployment where appropriate, screenshots, presentation, and interview preparation
-
-## Author
-
-**Owaies**  
-GitHub: https://github.com/owaies
+Secrets belong in environment variables and must never be committed. JWT-protected endpoints enforce user ownership at the database query level.
 
 ## License
 
-MIT License. See [LICENSE](LICENSE).
+MIT
