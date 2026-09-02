@@ -1,4 +1,4 @@
-name: Apply exact render fix
+name: Apply exact render diagnostic
 
 on:
   push:
@@ -8,38 +8,37 @@ permissions:
   contents: write
 
 jobs:
-  fix:
+  diagnose:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Apply the verified one-line fix
+      - name: Add targeted CustomSelect runtime diagnostic
         run: |
           python3 - <<'PY'
           from pathlib import Path
           p = Path('frontend/src/App.tsx')
           s = p.read_text()
-          old = 'priorityFilter={le} setPriorityFilter={le}'
-          new = 'priorityFilter={ce} setPriorityFilter={le}'
+          old = "  const active = value || placeholder\n"
+          new = '''  const active = value || placeholder\n  if (typeof active !== 'string') {\n    const tag = Object.prototype.toString.call(active)\n    const description = typeof active === 'function' ? `[Function ${active.name || 'anonymous'}]` : String(active)\n    throw new Error(`CustomSelect invalid value: label=${String(label)}; type=${typeof active}; tag=${tag}; value=${description}`)\n  }\n'''
           count = s.count(old)
           if count != 1:
-              raise SystemExit(f'Expected exactly one bad prop wiring, found {count}')
+              raise SystemExit(f'Expected exactly one CustomSelect active assignment, found {count}')
           p.write_text(s.replace(old, new))
-          print('Applied exact prop wiring fix.')
+          print('Added targeted CustomSelect runtime diagnostic.')
           PY
-      - name: Verify fix and build frontend
+      - name: Verify and build
         run: |
-          grep -n 'priorityFilter=' src/App.tsx
-          test "$(grep -o 'priorityFilter={le} setPriorityFilter={le}' src/App.tsx | wc -l)" -eq 0
+          grep -n -A5 'const active = value || placeholder' src/App.tsx
           npm install --include=dev
           npm run build
         working-directory: frontend
-      - name: Remove one-time fixer and commit
+      - name: Commit diagnostic and remove one-time workflow
         run: |
           rm .github/workflows/apply-exact-render-fix.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add frontend/src/App.tsx .github/workflows/apply-exact-render-fix.yml
-          git commit -m 'fix: pass priority filter value to applications page'
+          git commit -m 'debug: expose CustomSelect runtime value'
           git push origin HEAD:main
