@@ -1,5 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
@@ -24,8 +24,41 @@ def _get_application(application_id: int, user_id: int, db: Session) -> JobAppli
 
 
 @router.get("", response_model=list[JobApplicationRead])
-def list_applications(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> list[JobApplication]:
-    return list(db.scalars(select(JobApplication).where(JobApplication.user_id == current_user.id).order_by(JobApplication.created_at.desc())))
+def list_applications(
+    search: str | None = Query(default=None, max_length=100),
+    status_filter: str | None = Query(default=None, alias="status", max_length=40),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[JobApplication]:
+    query = select(JobApplication).where(JobApplication.user_id == current_user.id)
+    if search:
+        term = f"%{search.strip()}%"
+        query = query.where(or_(JobApplication.company.ilike(term), JobApplication.role.ilike(term), JobApplication.location.ilike(term)))
+    if status_filter:
+        _validate_status(status_filter)
+        query = query.where(JobApplication.status == status_filter)
+    return list(db.scalars(query.order_by(JobApplication.created_at.desc())))
+
+
+@router.get("/analytics")
+def application_analytics(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, object]:
+    rows = db.execute(
+        select(JobApplication.status, func.count(JobApplication.id))
+        .where(JobApplication.user_id == current_user.id)
+        .group_by(JobApplication.status)
+    ).all()
+    counts = {status_name: 0 for status_name in APPLICATION_STATUSES}
+    for status_name, count in rows:
+        counts[status_name] = count
+    total = sum(counts.values())
+    active = total - counts["rejected"] - counts["withdrawn"]
+    return {
+        "total": total,
+        "active": active,
+        "interviews": counts["interview"],
+        "offers": counts["offer"],
+        "by_status": counts,
+    }
 
 
 @router.get("/{application_id}", response_model=JobApplicationRead)
