@@ -6,4 +6,4 @@ export default defineConfig({
   },
 })
 
-// Debug build: keep source maps available while tracing the production render exception.
+// Debug build: preserve source maps while tracing the production render exception.
