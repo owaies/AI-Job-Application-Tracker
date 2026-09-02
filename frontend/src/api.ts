@@ -1,4 +1,6 @@
 const API_URL = ''
+const REQUEST_TIMEOUT_MS = 12000
+const inFlightGets = new Map<string, Promise<unknown>>()
 
 export type User = { id: number; email: string; full_name?: string | null }
 
@@ -40,22 +42,53 @@ export type SmartAction = {
 type AuthResponse = { access_token: string; token_type: string; user: User }
 
 async function request<T>(path: string, options: RequestInit = {}, token?: string): Promise<T> {
-  const headers = new Headers(options.headers)
-  headers.set('Content-Type', 'application/json')
-  if (token) headers.set('Authorization', `Bearer ${token}`)
+  const method = (options.method ?? 'GET').toUpperCase()
+  const dedupeKey = method === 'GET' ? `${path}|${token ?? ''}` : ''
 
-  const response = await fetch(`${API_URL}${path}`, { ...options, headers })
-  if (!response.ok) {
-    if (response.status === 401 && token) {
-      localStorage.removeItem('job-tracker-token')
-      window.location.assign('/login')
-      throw new Error('Your session expired. Please sign in again.')
-    }
-    const body = await response.json().catch(() => ({}))
-    throw new Error(body.detail ?? 'Request failed')
+  if (dedupeKey) {
+    const existing = inFlightGets.get(dedupeKey)
+    if (existing) return existing as Promise<T>
   }
-  if (response.status === 204) return undefined as T
-  return response.json()
+
+  const run = (async () => {
+    const headers = new Headers(options.headers)
+    headers.set('Content-Type', 'application/json')
+    if (token) headers.set('Authorization', `Bearer ${token}`)
+
+    const controller = new AbortController()
+    const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+
+    try {
+      const response = await fetch(`${API_URL}${path}`, { ...options, headers, signal: controller.signal })
+      if (!response.ok) {
+        if (response.status === 401 && token) {
+          localStorage.removeItem('job-tracker-token')
+          window.location.assign('/login')
+          throw new Error('Your session expired. Please sign in again.')
+        }
+        const body = await response.json().catch(() => ({}))
+        throw new Error(body.detail ?? 'Request failed')
+      }
+      if (response.status === 204) return undefined as T
+      return response.json()
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw new Error('Request timed out. Please try again.')
+      }
+      throw error
+    } finally {
+      window.clearTimeout(timeout)
+    }
+  })()
+
+  if (dedupeKey) {
+    inFlightGets.set(dedupeKey, run)
+    run.finally(() => {
+      if (inFlightGets.get(dedupeKey) === run) inFlightGets.delete(dedupeKey)
+    }).catch(() => undefined)
+  }
+
+  return run
 }
 
 export const api = {
