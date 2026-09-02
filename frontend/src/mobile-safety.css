@@ -85,6 +85,47 @@ body {
   pointer-events: none;
 }
 
+.error-shell {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--ink);
+}
+
+.error-card {
+  width: min(680px, 100%);
+  padding: clamp(24px, 6vw, 52px);
+  border: 4px solid white;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 10px 10px 0 var(--pink);
+}
+
+.error-card h1 {
+  margin: 18px 0;
+}
+
+.error-card h1 em {
+  color: var(--pink);
+  -webkit-text-stroke: 0;
+  font-style: normal;
+}
+
+.error-card p {
+  color: var(--ink);
+}
+
+.error-card code {
+  display: block;
+  margin: 18px 0;
+  padding: 12px;
+  overflow-wrap: anywhere;
+  background: var(--white);
+  border: 3px dashed var(--ink);
+  font: 700 .7rem/1.5 'Space Mono', monospace;
+}
+
 @media (max-width: 760px) {
   .app-content {
     width: calc(100% - 24px);
@@ -120,6 +161,11 @@ body {
   .filter-bar,
   .two-col {
     width: 100%;
+  }
+
+  .error-shell {
+    min-height: 100dvh;
+    padding: 18px;
   }
 }
 
