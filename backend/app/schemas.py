@@ -13,6 +13,7 @@ APPLICATION_STATUSES = {
     "rejected",
     "withdrawn",
 }
+PRIORITIES = {"low", "medium", "high"}
 
 
 class JobApplicationBase(BaseModel):
@@ -20,8 +21,12 @@ class JobApplicationBase(BaseModel):
     role: str = Field(min_length=1, max_length=150)
     location: Optional[str] = Field(default=None, max_length=150)
     status: str = Field(default="applied", max_length=40)
+    priority: str = Field(default="medium", max_length=20)
     salary: Optional[str] = Field(default=None, max_length=100)
     application_date: Optional[datetime] = None
+    follow_up_date: Optional[datetime] = None
+    interview_date: Optional[datetime] = None
+    next_action: Optional[str] = Field(default=None, max_length=500)
     notes: Optional[str] = None
 
 
@@ -34,8 +39,12 @@ class JobApplicationUpdate(BaseModel):
     role: Optional[str] = Field(default=None, min_length=1, max_length=150)
     location: Optional[str] = Field(default=None, max_length=150)
     status: Optional[str] = Field(default=None, max_length=40)
+    priority: Optional[str] = Field(default=None, max_length=20)
     salary: Optional[str] = Field(default=None, max_length=100)
     application_date: Optional[datetime] = None
+    follow_up_date: Optional[datetime] = None
+    interview_date: Optional[datetime] = None
+    next_action: Optional[str] = Field(default=None, max_length=500)
     notes: Optional[str] = None
 
 
@@ -47,3 +56,12 @@ class JobApplicationRead(JobApplicationBase):
     application_date: datetime
     created_at: datetime
     updated_at: datetime
+
+
+class SmartAction(BaseModel):
+    application_id: int
+    company: str
+    role: str
+    priority: str
+    recommendation: str
+    reason: str
