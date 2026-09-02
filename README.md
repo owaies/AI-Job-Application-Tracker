@@ -138,16 +138,7 @@ Set `VITE_API_URL` when the API is not running at the default local URL.
 
 ## Testing
 
-Backend tests live in `backend/tests/test_api.py` and cover:
-
-- Health endpoint
-- Registration and authenticated `/me`
-- Application create/read/update/delete
-- Search
-- Analytics
-- Smart-action recommendations
-- User isolation
-- Status and priority validation
+Backend tests live in `backend/tests/test_api.py` and cover health, registration, authenticated `/me`, application CRUD, search, analytics, smart actions, user isolation, and status/priority validation.
 
 Run locally with:
 
@@ -156,7 +147,7 @@ cd backend
 pytest -q
 ```
 
-GitHub Actions also runs the backend test suite and frontend production build on pushes to `main` and pull requests. Results are intentionally not claimed here unless the corresponding GitHub Actions run has completed successfully.
+Verified GitHub Actions run for the backend suite: **success** on the latest code revision. Verified frontend production build: **success** on the latest code revision. Earlier CI failures were fixed during development and are retained in the repository history as useful debugging evidence.
 
 ## Security
 
@@ -173,9 +164,14 @@ A production deployment is not claimed yet. The connected Vercel account current
 
 For a production deployment, connect this repository to a free Vercel project for the frontend and configure `VITE_API_URL` to a verified production API. The FastAPI backend also requires a production host and PostgreSQL connection. No paid service or billing upgrade is required by the repository itself.
 
+## Interview material
+
+- [`INTERVIEW_CHEAT_SHEET.md`](./INTERVIEW_CHEAT_SHEET.md) contains the 30-second and 2-minute explanations, technology/architecture/security/API/database Q&A, project-specific questions, debugging/scalability questions, HR questions, and rapid revision notes.
+- A presentation deck is provided separately with the project deliverables.
+
 ## Project status
 
-### Complete
+### Code-complete MVP
 
 - Foundation and architecture
 - PostgreSQL/SQLAlchemy data model
@@ -191,6 +187,8 @@ For a production deployment, connect this repository to a free Vercel project fo
 - Automated backend tests
 - Frontend build CI
 - Security and setup documentation
+- Interview cheat sheet
+- Presentation deck
 
 ### Optional future scope
 
