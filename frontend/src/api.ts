@@ -1,6 +1,6 @@
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000'
 
-export type User = { id: number; email: string; full_name: string | null }
+export type User = { id: number; email: string; full_name?: string | null }
 
 export type JobApplication = {
   id: number
@@ -16,7 +16,15 @@ export type JobApplication = {
   updated_at: string
 }
 
-type AuthResponse = { access_token: string; token_type: string }
+export type ApplicationAnalytics = {
+  total: number
+  active: number
+  interviews: number
+  offers: number
+  by_status: Record<string, number>
+}
+
+type AuthResponse = { access_token: string; token_type: string; user: User }
 
 async function request<T>(path: string, options: RequestInit = {}, token?: string): Promise<T> {
   const headers = new Headers(options.headers)
@@ -38,7 +46,14 @@ export const api = {
   login: (email: string, password: string) =>
     request<AuthResponse>('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
   me: (token: string) => request<User>('/api/auth/me', {}, token),
-  applications: (token: string) => request<JobApplication[]>('/api/applications', {}, token),
+  applications: (token: string, search = '', status = '') => {
+    const params = new URLSearchParams()
+    if (search.trim()) params.set('search', search.trim())
+    if (status) params.set('status', status)
+    const query = params.toString()
+    return request<JobApplication[]>(`/api/applications${query ? `?${query}` : ''}`, {}, token)
+  },
+  analytics: (token: string) => request<ApplicationAnalytics>('/api/applications/analytics', {}, token),
   createApplication: (token: string, data: Partial<JobApplication>) =>
     request<JobApplication>('/api/applications', { method: 'POST', body: JSON.stringify(data) }, token),
   updateApplication: (token: string, id: number, data: Partial<JobApplication>) =>
