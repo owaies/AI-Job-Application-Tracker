@@ -2,6 +2,16 @@ const API_URL = ''
 const REQUEST_TIMEOUT_MS = 12000
 const inFlightGets = new Map<string, Promise<unknown>>()
 
+export class ApiError extends Error {
+  status: number
+
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+  }
+}
+
 export type User = { id: number; email: string; full_name?: string | null }
 
 export type JobApplication = {
@@ -52,7 +62,7 @@ async function request<T>(path: string, options: RequestInit = {}, token?: strin
 
   const run = (async () => {
     const headers = new Headers(options.headers)
-    headers.set('Content-Type', 'application/json')
+    if (method !== 'GET') headers.set('Content-Type', 'application/json')
     if (token) headers.set('Authorization', `Bearer ${token}`)
 
     const controller = new AbortController()
@@ -61,19 +71,14 @@ async function request<T>(path: string, options: RequestInit = {}, token?: strin
     try {
       const response = await fetch(`${API_URL}${path}`, { ...options, headers, signal: controller.signal })
       if (!response.ok) {
-        if (response.status === 401 && token) {
-          localStorage.removeItem('job-tracker-token')
-          window.location.assign('/login')
-          throw new Error('Your session expired. Please sign in again.')
-        }
         const body = await response.json().catch(() => ({}))
-        throw new Error(body.detail ?? 'Request failed')
+        throw new ApiError(body.detail ?? `Request failed (${response.status})`, response.status)
       }
       if (response.status === 204) return undefined as T
       return response.json()
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') {
-        throw new Error('Request timed out. Please try again.')
+        throw new ApiError('Request timed out. Please try again.', 0)
       }
       throw error
     } finally {
