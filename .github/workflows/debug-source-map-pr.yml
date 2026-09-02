@@ -1,0 +1,53 @@
+name: Debug source map PR
+
+on:
+  pull_request:
+
+jobs:
+  map-production-stack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install frontend dependencies
+        run: npm install --include=dev
+        working-directory: frontend
+      - name: Build exact frontend
+        run: npm run build
+        working-directory: frontend
+      - name: Inspect exact generated locations
+        run: |
+          node <<'NODE'
+          const fs = require('fs')
+          const path = require('path')
+          const file = fs.readdirSync('dist/assets').find(f => f.endsWith('.js'))
+          const text = fs.readFileSync(path.join('dist/assets', file), 'utf8')
+          const line = text.split('\n')[8]
+          for (const column of [43552, 44427, 45177, 60864, 71054, 75492]) {
+            console.log(`--- generated line 9 column ${column} ---`)
+            console.log(line.slice(Math.max(0, column - 500), column + 500))
+          }
+          NODE
+        working-directory: frontend
+      - name: Map browser stack locations
+        run: |
+          npm install --no-save source-map@0.7.6
+          node <<'NODE'
+          const fs = require('fs')
+          const path = require('path')
+          const { SourceMapConsumer } = require('./node_modules/source-map')
+          const mapFile = fs.readdirSync('dist/assets').find(f => f.endsWith('.js.map'))
+          const map = JSON.parse(fs.readFileSync(path.join('dist/assets', mapFile), 'utf8'))
+          console.log('MAP_FILE=' + mapFile)
+          SourceMapConsumer.with(map, null, consumer => {
+            for (const [line, column] of [[9, 43552], [9, 44427], [9, 45177], [9, 60864], [9, 71054], [9, 75492]]) {
+              console.log(`GENERATED ${line}:${column} -> ${JSON.stringify(consumer.originalPositionFor({ line, column, bias: SourceMapConsumer.GREATEST_LOWER_BOUND }))}`)
+            }
+          })
+          NODE
+        working-directory: frontend
+      - name: List every frontend replace call
+        run: grep -RIn --exclude-dir=node_modules '\\.replace(' src || true
+        working-directory: frontend
