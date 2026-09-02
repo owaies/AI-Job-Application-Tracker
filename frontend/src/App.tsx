@@ -28,6 +28,12 @@ function CustomSelect({ label, value, options, onChange, placeholder = 'SELECT' 
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const active = value || placeholder
+  const runtimeActive: unknown = active
+  if (typeof runtimeActive !== 'string') {
+    const tag = Object.prototype.toString.call(runtimeActive)
+    const description = typeof runtimeActive === 'function' ? `[Function ${runtimeActive.name || 'anonymous'}]` : String(runtimeActive)
+    throw new Error(`CustomSelect invalid value: label=${String(label)}; type=${typeof runtimeActive}; tag=${tag}; value=${description}`)
+  }
   useEffect(() => { const outside = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }; const key = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }; document.addEventListener('mousedown', outside); document.addEventListener('keydown', key); return () => { document.removeEventListener('mousedown', outside); document.removeEventListener('keydown', key) } }, [])
   const choose = (option: string) => { onChange(option); setOpen(false) }
   return <div className="custom-select" ref={ref}>{label && <span className="custom-select-label">{label}</span>}<button type="button" className={`custom-select-trigger ${open ? 'is-open' : ''}`} aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen(v => !v)}><span>{pretty(active)}</span><span className="custom-select-arrow" aria-hidden="true">{open ? '↑' : '↓'}</span></button>{open && <div className="custom-select-menu" role="listbox" aria-label={label || placeholder}>{options.map(option => <button type="button" role="option" aria-selected={value === option} className={`custom-select-option ${value === option ? 'selected' : ''}`} key={option} onClick={() => choose(option)}><span>{pretty(option)}</span><span className="option-mark" aria-hidden="true">{value === option ? '■' : '□'}</span></button>)}</div>}</div>
