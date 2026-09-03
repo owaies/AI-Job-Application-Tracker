@@ -9,7 +9,6 @@ permissions:
 
 jobs:
   patch:
-    if: github.actor != 'github-actions[bot]' && contains(github.event.head_commit.message, 'fix: replace native date picker with custom calendar')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,7 +16,6 @@ jobs:
         shell: python
         run: |
           from pathlib import Path
-          import re
 
           app = Path('frontend/src/App.tsx')
           css = Path('frontend/src/styles.css')
@@ -26,10 +24,13 @@ jobs:
           start = text.index('function CustomDateTime(')
           end = text.index('\n\nfunction ConfirmModal', start)
 
-          replacement = r'''function parsePickerValue(value: string) {
-  const match = value.match(/^(\\d{4})-(\\d{2})-(\\d{2})\\s(\\d{2}):(\\d{2})$/)
-  if (!match) return null
-  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(match[4]), Number(match[5]))
+          replacement = '''function parsePickerValue(value: string) {
+  if (!value) return null
+  const [datePart, timePart = '00:00'] = value.replace('T', ' ').split(' ')
+  const dateBits = datePart.split('-').map(Number)
+  const timeBits = timePart.split(':').map(Number)
+  if (dateBits.length !== 3 || dateBits.some(Number.isNaN)) return null
+  const date = new Date(dateBits[0], dateBits[1] - 1, dateBits[2], timeBits[0] || 0, timeBits[1] || 0)
   return Number.isNaN(date.getTime()) ? null : date
 }
 
@@ -75,7 +76,6 @@ function CustomDateTime({ label, value, onChange }: { label: string; value: stri
   }
   const shiftMonth = (amount: number) => setMonth(new Date(month.getFullYear(), month.getMonth() + amount, 1))
   const today = new Date()
-  const selected = draft.getDate()
   const displayValue = value ? formatDate(value, true) : 'SELECT DATE & TIME'
 
   return <>
@@ -87,19 +87,19 @@ function CustomDateTime({ label, value, onChange }: { label: string; value: stri
       <small>LOCAL TIME · 24 HOUR · CUSTOM PICKER</small>
     </label>
     {open && <div className="custom-picker-backdrop" role="presentation" onMouseDown={e => { if (e.currentTarget === e.target) setOpen(false) }}>
-      <section className="custom-picker" role="dialog" aria-modal="true" aria-labelledby={`${label.replace(/\\s/g, '-')}-picker-title`}>
-        <div className="custom-picker-head"><div><span className="kicker">{label.toUpperCase()} // 01</span><h2 id={`${label.replace(/\\s/g, '-')}-picker-title`}>Set date & time</h2></div><button type="button" className="icon-btn" onClick={() => setOpen(false)} aria-label="Close date picker">×</button></div>
+      <section className="custom-picker" role="dialog" aria-modal="true" aria-labelledby={`${label.replaceAll(' ', '-')}-picker-title`}>
+        <div className="custom-picker-head"><div><span className="kicker">{label.toUpperCase()} // 01</span><h2 id={`${label.replaceAll(' ', '-')}-picker-title`}>Set date & time</h2></div><button type="button" className="icon-btn" onClick={() => setOpen(false)} aria-label="Close date picker">×</button></div>
         <div className="custom-picker-body">
           <div className="calendar-block">
             <div className="calendar-nav"><button type="button" onClick={() => shiftMonth(-1)} aria-label="Previous month">←</button><strong>{month.toLocaleDateString([], { month: 'long', year: 'numeric' })}</strong><button type="button" onClick={() => shiftMonth(1)} aria-label="Next month">→</button></div>
             <div className="calendar-weekdays">{['SUN','MON','TUE','WED','THU','FRI','SAT'].map(d => <span key={d}>{d}</span>)}</div>
-            <div className="calendar-grid">{days.map(day => { const same = day.getFullYear() === draft.getFullYear() && day.getMonth() === draft.getMonth() && day.getDate() === selected; const outside = day.getMonth() !== month.getMonth(); const isToday = day.toDateString() === today.toDateString(); return <button type="button" key={day.toISOString()} className={`calendar-day ${same ? 'selected' : ''} ${outside ? 'outside' : ''} ${isToday ? 'today' : ''}`} onClick={() => chooseDay(day)} aria-label={day.toDateString()}>{day.getDate()}</button> })}</div>
-            <button type="button" className="calendar-today" onClick={() => { setDraft(new Date()); setMonth(new Date(today.getFullYear(), today.getMonth(), 1)) }}>TODAY ↗</button>
+            <div className="calendar-grid">{days.map(day => { const same = day.toDateString() === draft.toDateString(); const outside = day.getMonth() !== month.getMonth(); const isToday = day.toDateString() === today.toDateString(); return <button type="button" key={day.toISOString()} className={`calendar-day ${same ? 'selected' : ''} ${outside ? 'outside' : ''} ${isToday ? 'today' : ''}`} onClick={() => chooseDay(day)} aria-label={day.toDateString()}>{day.getDate()}</button> })}</div>
+            <button type="button" className="calendar-today" onClick={() => { const now = new Date(); setDraft(now); setMonth(new Date(now.getFullYear(), now.getMonth(), 1)) }}>TODAY ↗</button>
           </div>
           <div className="time-block">
             <span className="time-label">TIME / 24 HOUR</span>
             <div className="time-readout"><strong>{pad(draft.getHours())}</strong><span>:</span><strong>{pad(draft.getMinutes())}</strong></div>
-            <div className="time-control"><div><button type="button" onClick={() => changeTime('hour', String(draft.getHours() + 1))}>+</button><input value={pad(draft.getHours())} inputMode="numeric" aria-label="Hour" onChange={e => changeTime('hour', e.target.value)} /><button type="button" onClick={() => changeTime('hour', String(draft.getHours() - 1))}>−</button></div><span>:</span><div><button type="button" onClick={() => changeTime('minute', String(draft.getMinutes() + 5))}>+</button><input value={pad(draft.getMinutes())} inputMode="numeric" aria-label="Minute" onChange={e => changeTime('minute', e.target.value)} /><button type="button" onClick={() => changeTime('minute', String(draft.getMinutes() - 5))}>−</button></div></div>
+            <div className="time-control"><div><button type="button" onClick={() => changeTime('hour', String((draft.getHours() + 1) % 24))}>+</button><input value={pad(draft.getHours())} inputMode="numeric" aria-label="Hour" onChange={e => changeTime('hour', e.target.value)} /><button type="button" onClick={() => changeTime('hour', String((draft.getHours() + 23) % 24))}>−</button></div><span>:</span><div><button type="button" onClick={() => changeTime('minute', String((draft.getMinutes() + 5) % 60))}>+</button><input value={pad(draft.getMinutes())} inputMode="numeric" aria-label="Minute" onChange={e => changeTime('minute', e.target.value)} /><button type="button" onClick={() => changeTime('minute', String((draft.getMinutes() + 55) % 60))}>−</button></div></div>
             <div className="picker-summary"><span>SELECTED</span><strong>{draft.toLocaleDateString([], { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}</strong><strong>{pad(draft.getHours())}:{pad(draft.getMinutes())}</strong></div>
           </div>
         </div>
@@ -112,7 +112,7 @@ function CustomDateTime({ label, value, onChange }: { label: string; value: stri
           text = text[:start] + replacement + text[end:]
           app.write_text(text)
 
-          style = r'''
+          style = '''
 
 /* CUSTOM DATE/TIME PICKER */
 .custom-date { position: relative; }
