@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { api, ApplicationAnalytics, JobApplication, SmartAction, User } from './api'
+import CustomDateTime from './CustomDateTime'
 
 const STATUSES = ['saved', 'applied', 'screening', 'interview', 'offer', 'rejected', 'withdrawn']
 const PRIORITIES = ['low', 'medium', 'high']
@@ -33,13 +34,6 @@ function CustomSelect({ label, value, options, onChange, placeholder = 'SELECT' 
   useEffect(() => { const outside = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }; const key = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }; document.addEventListener('mousedown', outside); document.addEventListener('keydown', key); return () => { document.removeEventListener('mousedown', outside); document.removeEventListener('keydown', key) } }, [])
   const choose = (option: string) => { onChange(option); setOpen(false) }
   return <div className="custom-select" ref={ref}>{label && <span className="custom-select-label">{label}</span>}<button type="button" className={`custom-select-trigger ${open ? 'is-open' : ''}`} aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen(v => !v)}><span>{pretty(active)}</span><span className="custom-select-arrow" aria-hidden="true">{open ? '↑' : '↓'}</span></button>{open && <div className="custom-select-menu" role="listbox" aria-label={label || placeholder}>{options.map(option => <button type="button" role="option" aria-selected={value === option} className={`custom-select-option ${value === option ? 'selected' : ''}`} key={option} onClick={() => choose(option)}><span>{pretty(option)}</span><span className="option-mark" aria-hidden="true">{value === option ? '■' : '□'}</span></button>)}</div>}</div>
-}
-
-function CustomDateTime({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  const [focused, setFocused] = useState(false)
-  const valid = !value || /^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}$/.test(value)
-  const nativeValue = valid && value ? value.replace(' ', 'T') : ''
-  return <label className={`custom-date ${focused ? 'is-focused' : ''}`}><span>{label}</span><div className="custom-date-wrap"><input type="datetime-local" value={nativeValue} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} onChange={e => onChange(e.target.value ? e.target.value.replace('T', ' ') : '')} aria-invalid={!valid} aria-label={`${label}, select date and time`} /><button type="button" className="date-clear" onClick={() => onChange('')} aria-label={`Clear ${label}`}>×</button></div><small>{valid ? 'LOCAL TIME · 24 HOUR · TAP FIELD TO PICK' : 'SELECT A VALID DATE AND TIME'}</small></label>
 }
 
 function ConfirmModal({ application, busy, onConfirm, onCancel }: { application: JobApplication | null; busy: boolean; onConfirm: () => void; onCancel: () => void }) {
