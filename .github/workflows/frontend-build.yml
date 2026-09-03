@@ -21,20 +21,15 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import re
           p = Path('frontend/src/App.tsx')
           s = p.read_text()
 
-          diagnostic_pattern = re.compile(
-              r"\n  const runtimeActive: unknown = active\n"
-              r"  if \(typeof runtimeActive !== 'string'\) \{\n"
-              r"    const tag = Object\.prototype\.toString\.call\(runtimeActive\)\n"
-              r"    const description = typeof runtimeActive === 'function' \? `\[Function \$\{runtimeActive\.name \|\| 'anonymous'\}\]` : String\(runtimeActive\)\n"
-              r"    throw new Error\(`CustomSelect invalid value: label=\$\{String\(label\)\}; type=\$\{typeof runtimeActive\}; tag=\$\{tag\}; value=\$\{description\}`\)\n"
-              r"  \}")
-          s, removed = diagnostic_pattern.subn('', s, count=1)
-          if removed != 1:
-              raise SystemExit(f'Expected one temporary CustomSelect diagnostic, found {removed}')
+          marker = '  const runtimeActive: unknown = active\n'
+          if marker not in s:
+              raise SystemExit('Temporary CustomSelect diagnostic not found; aborting rather than guessing.')
+          start = s.index(marker)
+          end = s.index('  useEffect', start)
+          s = s[:start] + s[end:]
 
           old_props = "function CustomSelect({ label, value, options, onChange, placeholder = 'SELECT' }: { label?: string; value: string; options: string[]; onChange: (value: string) => void; placeholder?: string }) {"
           new_props = "export interface CustomSelectProps { label?: string; value: string; options: string[]; onChange: (value: string) => void; placeholder?: string }\n\nfunction CustomSelect({ label, value, options, onChange, placeholder = 'SELECT' }: CustomSelectProps) {"
@@ -54,9 +49,8 @@ jobs:
               raise SystemExit('Incorrect priority setter-to-value wiring remains')
           if 'priorityFilter={priorityFilter} setPriorityFilter={setPriorityFilter}' not in s:
               raise SystemExit('Correct priority filter wiring is missing')
-
           p.write_text(s)
-          print('Exact CustomSelect fix verified and prop contracts strengthened.')
+          print('Exact source correction prepared.')
           PY
       - name: Add compile-time regression contract
         run: |
@@ -97,10 +91,10 @@ jobs:
           rm -f .github/workflows/debug-source-map.yml .github/workflows/apply-custom-select-fix.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          if ! git diff --quiet -- frontend/src/App.tsx frontend/src/custom-select.contract.ts .github/workflows/debug-source-map.yml .github/workflows/apply-custom-select-fix.yml; then
-            git add frontend/src/App.tsx frontend/src/custom-select.contract.ts .github/workflows/debug-source-map.yml .github/workflows/apply-custom-select-fix.yml
+          git add frontend/src/App.tsx frontend/src/custom-select.contract.ts .github/workflows/debug-source-map.yml .github/workflows/apply-custom-select-fix.yml
+          if git diff --cached --quiet; then
+            echo 'No changes to commit.'
+          else
             git commit -m 'fix: correct CustomSelect priority filter wiring'
             git push origin HEAD:main
-          else
-            echo 'No source changes remain to commit.'
           fi
