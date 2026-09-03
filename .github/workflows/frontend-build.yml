@@ -20,26 +20,31 @@ jobs:
           cd frontend
           npm install --include=dev
           npm run build
-      - name: Inspect compiled CustomSelect and source map
+      - name: Inspect minified compiled wiring
         run: |
           node <<'NODE'
           const fs = require('fs')
           const path = require('path')
           const js = fs.readdirSync('frontend/dist/assets').find(f => f.endsWith('.js') && !f.endsWith('.map'))
-          const mapFile = fs.readdirSync('frontend/dist/assets').find(f => f.endsWith('.js.map'))
           const code = fs.readFileSync(path.join('frontend/dist/assets', js), 'utf8')
-          console.log('BUNDLE=' + js)
-          for (const needle of ['CustomSelect','priorityFilter','setPriorityFilter','replace(']) {
-            let pos = 0
-            let count = 0
-            while ((pos = code.indexOf(needle, pos)) !== -1 && count < 20) {
-              console.log(`NEEDLE ${needle} @ ${pos}: ${code.slice(Math.max(0, pos-500), pos+800)}`)
-              pos += needle.length
-              count++
-            }
-            console.log(`COUNT ${needle} (first 20)=${count}`)
-          }
-          console.log('MAP=' + mapFile)
+          const pos = code.indexOf('k===`applications`&&!le')
+          console.log('MINIFIED_BUNDLE=' + js)
+          console.log(code.slice(pos, pos + 1000))
+          NODE
+      - name: Build unminified comparison bundle
+        run: |
+          cd frontend
+          npx vite build --minify false --outDir dist-unminified
+      - name: Inspect unminified wiring
+        run: |
+          node <<'NODE'
+          const fs = require('fs')
+          const path = require('path')
+          const js = fs.readdirSync('frontend/dist-unminified/assets').find(f => f.endsWith('.js') && !f.endsWith('.map'))
+          const code = fs.readFileSync(path.join('frontend/dist-unminified/assets', js), 'utf8')
+          const pos = code.indexOf('priorityFilter')
+          console.log('UNMINIFIED_BUNDLE=' + js)
+          console.log(code.slice(Math.max(0, pos - 1000), pos + 2500))
           NODE
       - name: Verify source map locations
         run: |
