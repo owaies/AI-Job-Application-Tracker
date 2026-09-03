@@ -5,9 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "predev": "node ../.github/scripts/apply_custom_date_picker.mjs",
     "build": "tsc -b && vite build",
-    "prebuild": "node ../.github/scripts/apply_custom_date_picker.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
