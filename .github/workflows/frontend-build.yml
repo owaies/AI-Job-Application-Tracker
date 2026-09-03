@@ -1,4 +1,4 @@
-name: Frontend Build Verified
+name: Frontend Build Verified 2
 
 on:
   push:
