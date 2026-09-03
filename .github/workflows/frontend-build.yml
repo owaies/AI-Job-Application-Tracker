@@ -1,4 +1,4 @@
-name: Frontend Build Verified 2
+name: Frontend Build
 
 on:
   push:
@@ -6,96 +6,24 @@ on:
   pull_request:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Apply exact CustomSelect source/type fix
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path('frontend/src/App.tsx')
-          s = p.read_text().replace('\r\n', '\n')
-          marker = '  const runtimeActive: unknown = active\n'
-          if marker in s:
-              start = s.index(marker)
-              end = s.index('  useEffect', start)
-              s = s[:start] + s[end:]
-          wrong = 'priorityFilter={setPriorityFilter}'
-          if s.count(wrong) != 1:
-              raise SystemExit(f'Expected exactly one bad priority wiring, found {s.count(wrong)}')
-          s = s.replace(wrong, 'priorityFilter={priorityFilter}', 1)
-          old_props = "function CustomSelect({ label, value, options, onChange, placeholder = 'SELECT' }: { label?: string; value: string; options: string[]; onChange: (value: string) => void; placeholder?: string }) {"
-          new_props = "export interface CustomSelectProps { label?: string; value: string; options: string[]; onChange: (value: string) => void; placeholder?: string }\n\nfunction CustomSelect({ label, value, options, onChange, placeholder = 'SELECT' }: CustomSelectProps) {"
-          if 'export interface CustomSelectProps' not in s:
-              if s.count(old_props) != 1:
-                  raise SystemExit(f'CustomSelect declaration mismatch: {s.count(old_props)}')
-              s = s.replace(old_props, new_props, 1)
-          old_page = "function ApplicationsPage({ applications, search, setSearch, statusFilter, setStatusFilter, priorityFilter, setPriorityFilter, sort, setSort, go, onAdd, onEdit, onDelete }: any) {"
-          new_page = "interface ApplicationsPageProps {\n  applications: JobApplication[]\n  search: string\n  setSearch: React.Dispatch<React.SetStateAction<string>>\n  statusFilter: string\n  setStatusFilter: React.Dispatch<React.SetStateAction<string>>\n  priorityFilter: string\n  setPriorityFilter: React.Dispatch<React.SetStateAction<string>>\n  sort: string\n  setSort: React.Dispatch<React.SetStateAction<string>>\n  go: (p: string) => void\n  onAdd: () => void\n  onEdit: (a: JobApplication) => void\n  onDelete: (id: number) => void\n}\n\nfunction ApplicationsPage({ applications, search, setSearch, statusFilter, setStatusFilter, priorityFilter, setPriorityFilter, sort, setSort, go, onAdd, onEdit, onDelete }: ApplicationsPageProps) {"
-          if 'interface ApplicationsPageProps' not in s:
-              if s.count(old_page) != 1:
-                  raise SystemExit(f'ApplicationsPage declaration mismatch: {s.count(old_page)}')
-              s = s.replace(old_page, new_page, 1)
-          expected = '<CustomSelect label="PRIORITY" value={priorityFilter} options={[\'\', ...PRIORITIES]} onChange={setPriorityFilter}'
-          if expected not in s:
-              raise SystemExit('Final PRIORITY CustomSelect value/onChange contract is missing')
-          if 'value={setPriorityFilter}' in s:
-              raise SystemExit('Incorrect priority setter-to-value wiring remains')
-          if 'const runtimeActive: unknown = active' in s:
-              raise SystemExit('Temporary CustomSelect diagnostic remains')
-          p.write_text(s, newline='\n')
-          PY
-      - name: Add compile-time regression contract
-        run: |
-          cat > frontend/src/custom-select.contract.ts <<'EOF'
-          import type { CustomSelectProps } from './App'
-          const validProps: CustomSelectProps = {
-            label: 'PRIORITY', value: 'medium', options: ['low', 'medium', 'high'],
-            onChange: value => { const next: string = value; void next },
-          }
-          void validProps
-          const invalidProps: CustomSelectProps = {
-            label: 'PRIORITY',
-            // @ts-expect-error A function/setter must never be accepted as CustomSelect.value.
-            value: (value: string) => value,
-            options: ['low', 'medium', 'high'], onChange: value => void value,
-          }
-          void invalidProps
-          EOF
-      - name: Build and verify compiled prop wiring
-        run: |
-          cd frontend
-          npm install --include=dev
-          npm run build
-          node <<'NODE'
-          const fs = require('fs')
-          const path = require('path')
-          const js = fs.readdirSync('dist/assets').find(f => f.endsWith('.js') && !f.endsWith('.map'))
-          const code = fs.readFileSync(path.join('dist/assets', js), 'utf8')
-          const match = code.match(/priorityFilter:([^,}]+),setPriorityFilter:([^,}]+)/)
-          if (!match) throw new Error('Could not locate compiled ApplicationsPage priority props')
-          console.log(`Compiled priorityFilter=${match[1]}, setPriorityFilter=${match[2]}`)
-          if (match[1] === match[2]) throw new Error('Compiled bundle aliases priorityFilter and setPriorityFilter')
-          NODE
-      - name: Commit exact source fix
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add frontend/src/App.tsx frontend/src/custom-select.contract.ts
-          if git diff --cached --quiet; then
-            echo 'No source changes to commit.'
-          else
-            git commit -m 'fix: correct priority filter select value wiring'
-            git push origin HEAD:main
-          fi
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Build frontend
+        run: npm run build
