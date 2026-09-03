@@ -70,8 +70,8 @@ export default function CustomDateTime({ label, value, onChange }: { label: stri
       <small>LOCAL TIME · 24 HOUR · CUSTOM PICKER</small>
     </label>
     {open && <div className="custom-picker-backdrop" role="presentation" onMouseDown={e => { if (e.currentTarget === e.target) setOpen(false) }}>
-      <section className="custom-picker" role="dialog" aria-modal="true" aria-labelledby={`${label.replaceAll(' ', '-')}-picker-title`}>
-        <div className="custom-picker-head"><div><span className="kicker">{label.toUpperCase()} // 01</span><h2 id={`${label.replaceAll(' ', '-')}-picker-title`}>Set date & time</h2></div><button type="button" className="icon-btn" onClick={() => setOpen(false)} aria-label="Close date picker">×</button></div>
+      <section className="custom-picker" role="dialog" aria-modal="true" aria-labelledby={`${label.split(' ').join('-')}-picker-title`}>
+        <div className="custom-picker-head"><div><span className="kicker">{label.toUpperCase()} // 01</span><h2 id={`${label.split(' ').join('-')}-picker-title`}>Set date & time</h2></div><button type="button" className="icon-btn" onClick={() => setOpen(false)} aria-label="Close date picker">×</button></div>
         <div className="custom-picker-body">
           <div className="calendar-block">
             <div className="calendar-nav"><button type="button" onClick={() => shiftMonth(-1)} aria-label="Previous month">←</button><strong>{month.toLocaleDateString([], { month: 'long', year: 'numeric' })}</strong><button type="button" onClick={() => shiftMonth(1)} aria-label="Next month">→</button></div>
