@@ -1,0 +1,38 @@
+name: Post Fix Verification
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Verify exact source contract
+        run: |
+          grep -F 'value={priorityFilter}' frontend/src/App.tsx
+          grep -F 'onChange={setPriorityFilter}' frontend/src/App.tsx
+          grep -F 'interface CustomSelectProps' frontend/src/App.tsx
+          ! grep -F 'CustomSelect invalid value' frontend/src/App.tsx
+          ! grep -F 'value={setPriorityFilter}' frontend/src/App.tsx
+          test -f frontend/src/ErrorBoundary.tsx
+          grep -F '<ErrorBoundary>' frontend/src/main.tsx
+      - name: Frontend TypeScript/build
+        working-directory: frontend
+        run: npm install --include=dev && npm run build
+      - name: Backend tests
+        run: |
+          python -m pip install -r backend/requirements.txt
+          PYTHONPATH=. pytest backend/tests
+      - name: Remove temporary verifier
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          rm -f .github/workflows/post-fix-verification.yml
+          git add .github/workflows/post-fix-verification.yml
+          git commit -m 'chore: remove post-fix verification workflow'
+          git push origin HEAD:main
