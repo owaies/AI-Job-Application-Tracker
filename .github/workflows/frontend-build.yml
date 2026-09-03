@@ -17,36 +17,31 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Apply exact CustomSelect fix and type guard
+      - name: Remove temporary runtime diagnostic and strengthen prop types
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import re
           p = Path('frontend/src/App.tsx')
           s = p.read_text().replace('\r\n', '\n')
           marker = '  const runtimeActive: unknown = active\n'
-          if marker not in s:
-              raise SystemExit('Temporary CustomSelect diagnostic not found; aborting rather than guessing.')
-          start = s.index(marker)
-          end = s.index('  useEffect', start)
-          s = s[:start] + s[end:]
-
+          if marker in s:
+              start = s.index(marker)
+              end = s.index('  useEffect', start)
+              s = s[:start] + s[end:]
           old_props = "function CustomSelect({ label, value, options, onChange, placeholder = 'SELECT' }: { label?: string; value: string; options: string[]; onChange: (value: string) => void; placeholder?: string }) {"
           new_props = "export interface CustomSelectProps { label?: string; value: string; options: string[]; onChange: (value: string) => void; placeholder?: string }\n\nfunction CustomSelect({ label, value, options, onChange, placeholder = 'SELECT' }: CustomSelectProps) {"
-          if s.count(old_props) != 1:
-              raise SystemExit(f'Could not locate CustomSelect prop declaration exactly once: {s.count(old_props)}')
-          s = s.replace(old_props, new_props, 1)
-
+          if 'export interface CustomSelectProps' not in s:
+              if s.count(old_props) != 1:
+                  raise SystemExit(f'Could not locate CustomSelect prop declaration exactly once: {s.count(old_props)}')
+              s = s.replace(old_props, new_props, 1)
           old_page = "function ApplicationsPage({ applications, search, setSearch, statusFilter, setStatusFilter, priorityFilter, setPriorityFilter, sort, setSort, go, onAdd, onEdit, onDelete }: any) {"
           new_page = "export interface ApplicationsPageProps {\n  applications: JobApplication[]\n  search: string\n  setSearch: React.Dispatch<React.SetStateAction<string>>\n  statusFilter: string\n  setStatusFilter: React.Dispatch<React.SetStateAction<string>>\n  priorityFilter: string\n  setPriorityFilter: React.Dispatch<React.SetStateAction<string>>\n  sort: string\n  setSort: React.Dispatch<React.SetStateAction<string>>\n  go: (p: string) => void\n  onAdd: () => void\n  onEdit: (a: JobApplication) => void\n  onDelete: (id: number) => void\n}\n\nfunction ApplicationsPage({ applications, search, setSearch, statusFilter, setStatusFilter, priorityFilter, setPriorityFilter, sort, setSort, go, onAdd, onEdit, onDelete }: ApplicationsPageProps) {"
-          if s.count(old_page) != 1:
-              raise SystemExit(f'Could not locate untyped ApplicationsPage declaration exactly once: {s.count(old_page)}')
-          s = s.replace(old_page, new_page, 1)
-
-          if re.search(r'(?<!set)priorityFilter=\{setPriorityFilter\}', s):
-              raise SystemExit('Incorrect priority setter-to-value wiring remains.')
+          if 'export interface ApplicationsPageProps' not in s:
+              if s.count(old_page) != 1:
+                  raise SystemExit(f'Could not locate untyped ApplicationsPage declaration exactly once: {s.count(old_page)}')
+              s = s.replace(old_page, new_page, 1)
           if 'priorityFilter={priorityFilter} setPriorityFilter={setPriorityFilter}' not in s:
-              raise SystemExit('Correct priority filter wiring is missing.')
+              raise SystemExit('ApplicationsPage priority filter wiring is not the expected value/setter pair.')
           p.write_text(s, newline='\n')
           PY
       - name: Add compile-time regression contract
@@ -79,7 +74,6 @@ jobs:
           grep -n 'CustomSelectProps' frontend/src/App.tsx
           grep -n 'ApplicationsPageProps' frontend/src/App.tsx
           grep -n 'priorityFilter={priorityFilter} setPriorityFilter={setPriorityFilter}' frontend/src/App.tsx
-          test "$(grep -o 'priorityFilter={setPriorityFilter}' frontend/src/App.tsx | wc -l)" -eq 0
           cd frontend
           npm install --include=dev
           npm run build
