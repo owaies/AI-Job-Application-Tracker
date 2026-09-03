@@ -1,7 +1,8 @@
 name: Apply Auth Persistence Fix
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [main]
 
 permissions:
   contents: write
@@ -77,5 +78,9 @@ jobs:
           git add frontend/src/App.tsx
           git diff --cached --check
           git diff --cached -- frontend/src/App.tsx
+          if git diff --cached --quiet; then
+            echo "No source changes needed."
+            exit 0
+          fi
           git commit -m "fix: persist authentication across page refresh"
           git push origin HEAD:main
