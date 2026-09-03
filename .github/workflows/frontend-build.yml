@@ -9,51 +9,96 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Install frontend dependencies
+      - name: Apply exact CustomSelect source/type fix
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path('frontend/src/App.tsx')
+          s = p.read_text().replace('\r\n', '\n')
+
+          marker = '  const runtimeActive: unknown = active\n'
+          if marker in s:
+              start = s.index(marker)
+              end = s.index('  useEffect', start)
+              s = s[:start] + s[end:]
+
+          old_props = "function CustomSelect({ label, value, options, onChange, placeholder = 'SELECT' }: { label?: string; value: string; options: string[]; onChange: (value: string) => void; placeholder?: string }) {"
+          new_props = "export interface CustomSelectProps { label?: string; value: string; options: string[]; onChange: (value: string) => void; placeholder?: string }\n\nfunction CustomSelect({ label, value, options, onChange, placeholder = 'SELECT' }: CustomSelectProps) {"
+          if 'export interface CustomSelectProps' not in s:
+              if s.count(old_props) != 1:
+                  raise SystemExit(f'CustomSelect declaration mismatch: {s.count(old_props)}')
+              s = s.replace(old_props, new_props, 1)
+
+          old_page = "function ApplicationsPage({ applications, search, setSearch, statusFilter, setStatusFilter, priorityFilter, setPriorityFilter, sort, setSort, go, onAdd, onEdit, onDelete }: any) {"
+          new_page = "export interface ApplicationsPageProps {\n  applications: JobApplication[]\n  search: string\n  setSearch: React.Dispatch<React.SetStateAction<string>>\n  statusFilter: string\n  setStatusFilter: React.Dispatch<React.SetStateAction<string>>\n  priorityFilter: string\n  setPriorityFilter: React.Dispatch<React.SetStateAction<string>>\n  sort: string\n  setSort: React.Dispatch<React.SetStateAction<string>>\n  go: (p: string) => void\n  onAdd: () => void\n  onEdit: (a: JobApplication) => void\n  onDelete: (id: number) => void\n}\n\nfunction ApplicationsPage({ applications, search, setSearch, statusFilter, setStatusFilter, priorityFilter, setPriorityFilter, sort, setSort, go, onAdd, onEdit, onDelete }: ApplicationsPageProps) {"
+          if 'export interface ApplicationsPageProps' not in s:
+              if s.count(old_page) != 1:
+                  raise SystemExit(f'ApplicationsPage declaration mismatch: {s.count(old_page)}')
+              s = s.replace(old_page, new_page, 1)
+
+          match = re.search(r'<CustomSelect label="PRIORITY" value=\{([^}]+)\} options=\{\[\'\', \.\.\.PRIORITIES\]\} onChange=\{([^}]+)\}', s)
+          if not match or match.group(1) != 'priorityFilter' or match.group(2) != 'setPriorityFilter':
+              raise SystemExit(f'Priority CustomSelect wiring is not value=priorityFilter/onChange=setPriorityFilter: {match.groups() if match else None}')
+
+          p.write_text(s, newline='\n')
+          PY
+      - name: Add compile-time CustomSelect regression contract
+        run: |
+          cat > frontend/src/custom-select.contract.ts <<'EOF'
+          import type { CustomSelectProps } from './App'
+
+          const validProps: CustomSelectProps = {
+            label: 'PRIORITY',
+            value: 'medium',
+            options: ['low', 'medium', 'high'],
+            onChange: value => {
+              const next: string = value
+              void next
+            },
+          }
+          void validProps
+
+          // @ts-expect-error A function/setter must never be accepted as CustomSelect.value.
+          const invalidProps: CustomSelectProps = {
+            label: 'PRIORITY',
+            value: (value: string) => value,
+            options: ['low', 'medium', 'high'],
+            onChange: value => void value,
+          }
+          void invalidProps
+          EOF
+      - name: Build and verify regression contract
         run: |
           cd frontend
           npm install --include=dev
-      - name: Build default Vite production bundle
-        run: |
-          cd frontend
           npm run build
-      - name: Build with Terser
-        run: |
-          cd frontend
-          npm install --no-save terser
-          npx vite build --minify terser --outDir dist-terser
-      - name: Compare default and Terser wiring
-        run: |
           node <<'NODE'
           const fs = require('fs')
           const path = require('path')
-          for (const dir of ['frontend/dist','frontend/dist-terser']) {
-            const js = fs.readdirSync(path.join(dir,'assets')).find(f => f.endsWith('.js') && !f.endsWith('.map'))
-            const code = fs.readFileSync(path.join(dir,'assets',js), 'utf8')
-            const p = code.indexOf('priorityFilter:')
-            console.log(`--- ${dir}/${js} ---`)
-            console.log(code.slice(Math.max(0,p-250), p+650))
-          }
+          const js = fs.readdirSync('dist/assets').find(f => f.endsWith('.js') && !f.endsWith('.map'))
+          const code = fs.readFileSync(path.join('dist/assets', js), 'utf8')
+          const bad = /priorityFilter:([^,}]+),setPriorityFilter:\1/.test(code)
+          if (bad) throw new Error('Compiled bundle still aliases priorityFilter and setPriorityFilter.')
+          console.log('Compiled bundle does not alias priorityFilter and setPriorityFilter.')
           NODE
-      - name: Verify source map locations
+      - name: Commit source fix and remove temporary diagnostics
         run: |
-          cd frontend
-          npm install --no-save source-map@0.7.6
-          node <<'NODE'
-          const fs = require('fs')
-          const path = require('path')
-          const { SourceMapConsumer } = require('source-map')
-          const mapFile = fs.readdirSync('dist/assets').find(f => f.endsWith('.js.map'))
-          const map = JSON.parse(fs.readFileSync(path.join('dist/assets', mapFile), 'utf8'))
-          SourceMapConsumer.with(map, null, consumer => {
-            for (const [line, column] of [[9,43552],[9,44427],[9,45177],[9,60864],[9,71054],[9,75492]]) {
-              console.log(`GENERATED ${line}:${column} -> ${JSON.stringify(consumer.originalPositionFor({line,column,bias:SourceMapConsumer.GREATEST_LOWER_BOUND}))}`)
-            }
-          })
-          NODE
+          rm -f .github/workflows/debug-source-map.yml .github/workflows/apply-custom-select-fix.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add frontend/src/App.tsx frontend/src/custom-select.contract.ts .github/workflows/debug-source-map.yml .github/workflows/apply-custom-select-fix.yml
+          if git diff --cached --quiet; then
+            echo 'No source changes remain to commit.'
+          else
+            git commit -m 'fix: prevent CustomSelect setter/value aliasing'
+            git push origin HEAD:main
+          fi
