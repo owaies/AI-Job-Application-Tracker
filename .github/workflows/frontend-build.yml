@@ -42,14 +42,18 @@ jobs:
                   raise SystemExit(f'CustomSelect declaration mismatch: {s.count(old_props)}')
               s = s.replace(old_props, new_props, 1)
           old_page = "function ApplicationsPage({ applications, search, setSearch, statusFilter, setStatusFilter, priorityFilter, setPriorityFilter, sort, setSort, go, onAdd, onEdit, onDelete }: any) {"
-          new_page = "export interface ApplicationsPageProps {\n  applications: JobApplication[]\n  search: string\n  setSearch: React.Dispatch<React.SetStateAction<string>>\n  statusFilter: string\n  setStatusFilter: React.Dispatch<React.SetStateAction<string>>\n  priorityFilter: string\n  setPriorityFilter: React.Dispatch<React.SetStateAction<string>>\n  sort: string\n  setSort: React.Dispatch<React.SetStateAction<string>>\n  go: (p: string) => void\n  onAdd: () => void\n  onEdit: (a: JobApplication) => void\n  onDelete: (id: number) => void\n}\n\nfunction ApplicationsPage({ applications, search, setSearch, statusFilter, setStatusFilter, priorityFilter, setPriorityFilter, sort, setSort, go, onAdd, onEdit, onDelete }: ApplicationsPageProps) {"
-          if 'export interface ApplicationsPageProps' not in s:
+          new_page = "interface ApplicationsPageProps {\n  applications: JobApplication[]\n  search: string\n  setSearch: React.Dispatch<React.SetStateAction<string>>\n  statusFilter: string\n  setStatusFilter: React.Dispatch<React.SetStateAction<string>>\n  priorityFilter: string\n  setPriorityFilter: React.Dispatch<React.SetStateAction<string>>\n  sort: string\n  setSort: React.Dispatch<React.SetStateAction<string>>\n  go: (p: string) => void\n  onAdd: () => void\n  onEdit: (a: JobApplication) => void\n  onDelete: (id: number) => void\n}\n\nfunction ApplicationsPage({ applications, search, setSearch, statusFilter, setStatusFilter, priorityFilter, setPriorityFilter, sort, setSort, go, onAdd, onEdit, onDelete }: ApplicationsPageProps) {"
+          if 'interface ApplicationsPageProps' not in s:
               if s.count(old_page) != 1:
                   raise SystemExit(f'ApplicationsPage declaration mismatch: {s.count(old_page)}')
               s = s.replace(old_page, new_page, 1)
           expected = '<CustomSelect label="PRIORITY" value={priorityFilter} options={[\'\', ...PRIORITIES]} onChange={setPriorityFilter}'
           if expected not in s:
               raise SystemExit('Final PRIORITY CustomSelect value/onChange contract is missing')
+          if 'value={setPriorityFilter}' in s:
+              raise SystemExit('Incorrect priority setter-to-value wiring remains')
+          if 'const runtimeActive: unknown = active' in s:
+              raise SystemExit('Temporary CustomSelect diagnostic remains')
           p.write_text(s, newline='\n')
           PY
       - name: Add compile-time regression contract
@@ -84,14 +88,13 @@ jobs:
           console.log(`Compiled priorityFilter=${match[1]}, setPriorityFilter=${match[2]}`)
           if (match[1] === match[2]) throw new Error('Compiled bundle aliases priorityFilter and setPriorityFilter')
           NODE
-      - name: Commit exact fix and remove temporary diagnostics
+      - name: Commit exact source fix
         run: |
-          rm -f .github/workflows/debug-source-map.yml .github/workflows/apply-custom-select-fix.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add frontend/src/App.tsx frontend/src/custom-select.contract.ts .github/workflows/debug-source-map.yml .github/workflows/apply-custom-select-fix.yml
+          git add frontend/src/App.tsx frontend/src/custom-select.contract.ts
           if git diff --cached --quiet; then
-            echo 'No changes to commit.'
+            echo 'No source changes to commit.'
           else
             git commit -m 'fix: correct priority filter select value wiring'
             git push origin HEAD:main
