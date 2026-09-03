@@ -1,0 +1,105 @@
+name: Apply CustomSelect fix
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Apply exact CustomSelect fix and type guard
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('frontend/src/App.tsx')
+          s = p.read_text()
+
+          diagnostic = '''  const runtimeActive: unknown = active
+  if (typeof runtimeActive !== 'string') {
+    const tag = Object.prototype.toString.call(runtimeActive)
+    const description = typeof runtimeActive === 'function' ? `[Function ${runtimeActive.name || 'anonymous'}]` : String(runtimeActive)
+    throw new Error(`CustomSelect invalid value: label=${String(label)}; type=${typeof runtimeActive}; tag=${tag}; value=${description}`)
+  }
+'''
+          if diagnostic not in s:
+              raise SystemExit('Expected temporary CustomSelect diagnostic was not found')
+          s = s.replace(diagnostic, '', 1)
+
+          old_props = "function CustomSelect({ label, value, options, onChange, placeholder = 'SELECT' }: { label?: string; value: string; options: string[]; onChange: (value: string) => void; placeholder?: string }) {"
+          new_props = "export interface CustomSelectProps { label?: string; value: string; options: string[]; onChange: (value: string) => void; placeholder?: string }\n\nfunction CustomSelect({ label, value, options, onChange, placeholder = 'SELECT' }: CustomSelectProps) {"
+          if s.count(old_props) != 1:
+              raise SystemExit(f'Expected one CustomSelect prop declaration, found {s.count(old_props)}')
+          s = s.replace(old_props, new_props, 1)
+
+          old_page = "function ApplicationsPage({ applications, search, setSearch, statusFilter, setStatusFilter, priorityFilter, setPriorityFilter, sort, setSort, go, onAdd, onEdit, onDelete }: any) {"
+          new_page = "export interface ApplicationsPageProps {\n  applications: JobApplication[]\n  search: string\n  setSearch: React.Dispatch<React.SetStateAction<string>>\n  statusFilter: string\n  setStatusFilter: React.Dispatch<React.SetStateAction<string>>\n  priorityFilter: string\n  setPriorityFilter: React.Dispatch<React.SetStateAction<string>>\n  sort: string\n  setSort: React.Dispatch<React.SetStateAction<string>>\n  go: (p: string) => void\n  onAdd: () => void\n  onEdit: (a: JobApplication) => void\n  onDelete: (id: number) => void\n}\n\nfunction ApplicationsPage({ applications, search, setSearch, statusFilter, setStatusFilter, priorityFilter, setPriorityFilter, sort, setSort, go, onAdd, onEdit, onDelete }: ApplicationsPageProps) {"
+          if s.count(old_page) != 1:
+              raise SystemExit(f'Expected one untyped ApplicationsPage declaration, found {s.count(old_page)}')
+          s = s.replace(old_page, new_page, 1)
+
+          required = 'priorityFilter={priorityFilter} setPriorityFilter={setPriorityFilter}'
+          if required not in s:
+              raise SystemExit('Correct priority filter wiring is missing')
+          if 'priorityFilter={setPriorityFilter}' in s:
+              raise SystemExit('Incorrect priority filter wiring is still present')
+          if 'value={setPriorityFilter}' in s:
+              raise SystemExit('CustomSelect still receives the priority setter as value')
+
+          p.write_text(s)
+          print('Exact CustomSelect runtime fix verified; prop types strengthened.')
+          PY
+      - name: Add compile-time regression contract
+        run: |
+          cat > src/custom-select.contract.ts <<'EOF'
+          import type { CustomSelectProps } from './App'
+
+          const validProps: CustomSelectProps = {
+            label: 'PRIORITY',
+            value: 'medium',
+            options: ['low', 'medium', 'high'],
+            onChange: value => {
+              const next: string = value
+              void next
+            },
+          }
+
+          void validProps
+
+          // @ts-expect-error Regression guard: a React state setter/function must never be used as CustomSelect.value.
+          const invalidProps: CustomSelectProps = {
+            label: 'PRIORITY',
+            value: (value: string) => value,
+            options: ['low', 'medium', 'high'],
+            onChange: value => void value,
+          }
+
+          void invalidProps
+          EOF
+        working-directory: frontend
+      - name: Verify source and production build
+        run: |
+          grep -n 'CustomSelectProps' src/App.tsx
+          grep -n 'ApplicationsPageProps' src/App.tsx
+          grep -n 'priorityFilter={priorityFilter} setPriorityFilter={setPriorityFilter}' src/App.tsx
+          test "$(grep -o 'priorityFilter={setPriorityFilter}' src/App.tsx | wc -l)" -eq 0
+          npm install --include=dev
+          npm run build
+        working-directory: frontend
+      - name: Remove one-time workflow and commit
+        run: |
+          rm .github/workflows/apply-custom-select-fix.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add frontend/src/App.tsx frontend/src/custom-select.contract.ts .github/workflows/apply-custom-select-fix.yml
+          git commit -m 'fix: type CustomSelect filter props'
+          git push origin HEAD:main
