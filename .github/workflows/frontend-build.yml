@@ -9,18 +9,51 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Inspect live source before fix
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Build exact production bundle
         run: |
-          echo '--- CustomSelect definitions ---'
-          grep -n 'function CustomSelect' frontend/src/App.tsx || true
-          echo '--- priorityFilter occurrences ---'
-          grep -n 'priorityFilter' frontend/src/App.tsx || true
-          echo '--- PRIORITY CustomSelect call ---'
-          grep -n 'CustomSelect label="PRIORITY"' frontend/src/App.tsx || true
-          echo '--- diagnostic marker ---'
-          grep -n 'runtimeActive' frontend/src/App.tsx || true
-          exit 1
+          cd frontend
+          npm install --include=dev
+          npm run build
+      - name: Inspect compiled CustomSelect and source map
+        run: |
+          node <<'NODE'
+          const fs = require('fs')
+          const path = require('path')
+          const js = fs.readdirSync('frontend/dist/assets').find(f => f.endsWith('.js') && !f.endsWith('.map'))
+          const mapFile = fs.readdirSync('frontend/dist/assets').find(f => f.endsWith('.js.map'))
+          const code = fs.readFileSync(path.join('frontend/dist/assets', js), 'utf8')
+          console.log('BUNDLE=' + js)
+          for (const needle of ['CustomSelect','priorityFilter','setPriorityFilter','replace(']) {
+            let pos = 0
+            let count = 0
+            while ((pos = code.indexOf(needle, pos)) !== -1 && count < 20) {
+              console.log(`NEEDLE ${needle} @ ${pos}: ${code.slice(Math.max(0, pos-500), pos+800)}`)
+              pos += needle.length
+              count++
+            }
+            console.log(`COUNT ${needle} (first 20)=${count}`)
+          }
+          console.log('MAP=' + mapFile)
+          NODE
+      - name: Verify source map locations
+        run: |
+          cd frontend
+          npm install --no-save source-map@0.7.6
+          node <<'NODE'
+          const fs = require('fs')
+          const path = require('path')
+          const { SourceMapConsumer } = require('source-map')
+          const mapFile = fs.readdirSync('dist/assets').find(f => f.endsWith('.js.map'))
+          const map = JSON.parse(fs.readFileSync(path.join('dist/assets', mapFile), 'utf8'))
+          SourceMapConsumer.with(map, null, consumer => {
+            for (const [line, column] of [[9,43552],[9,44427],[9,45177],[9,60864],[9,71054],[9,75492]]) {
+              console.log(`GENERATED ${line}:${column} -> ${JSON.stringify(consumer.originalPositionFor({line,column,bias:SourceMapConsumer.GREATEST_LOWER_BOUND}))}`)
+            }
+          })
+          NODE
