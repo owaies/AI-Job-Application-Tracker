@@ -1,130 +1,200 @@
-# AI Job Application Tracker
+# JobTrack / AI Job Application Tracker
 
-A full-stack job-search command center for managing applications, tracking pipeline progress, planning follow-ups/interviews, and surfacing deterministic next actions.
+> **Track. Focus. Follow Up. Get Hired.**
 
-## Why this project?
+JobTrack is a full-stack job-search command center for managing applications, tracking pipeline progress, planning follow-ups and interviews, and surfacing deterministic next actions.
 
-Job searches often become a spreadsheet of forgotten applications, recruiter messages, interview dates, and follow-ups. This project turns that scattered process into a secure, user-scoped application pipeline with searchable records and actionable insights.
+**Live demo:** https://ai-job-application-tracker-rose.vercel.app  
+**Repository:** https://github.com/owaies/AI-Job-Application-Tracker
 
-## Features
+## Why JobTrack?
+
+A job search quickly becomes fragmented across spreadsheets, notes, recruiter messages, and calendar reminders. JobTrack turns that scattered workflow into one authenticated, searchable, user-scoped application registry with pipeline analytics and actionable follow-up guidance.
+
+## Core features
 
 - Account registration and login
 - JWT authentication with bcrypt password hashing
-- Optional profile name stored with the account
+- Persistent authenticated session across page refresh
 - User-scoped application data
-- Create, edit, and delete applications
+- Create, view, edit, and delete applications
 - Status pipeline: saved, applied, screening, interview, offer, rejected, withdrawn
 - Priority levels: low, medium, high
 - Search by company, role, or location
-- Filter applications by status
+- Status filtering and sorting
 - Follow-up and interview date tracking
-- Next-action notes per application
-- Pipeline summary: total, active, interviews, offers
-- Status breakdown analytics
-- Smart next-action recommendations based on status, priority, and dates
-- Loading, empty, validation, and error states
+- Next-action notes and application notes
+- Dashboard totals for total, active, interviews, and offers
+- Status distribution analytics
+- Deterministic smart next-action recommendations based on status, priority, and dates
+- Loading, empty, validation, confirmation, toast, and error states
 - Responsive desktop/mobile interface
-- Automated backend tests and frontend build checks through GitHub Actions
+- Custom date/time and select controls
+- GitHub Actions backend tests and frontend production-build checks
+- Vercel production deployment backed by PostgreSQL on Supabase
 
-> The smart-action feature is deterministic business logic, not a paid LLM call. This keeps the repository runnable without an external AI bill while leaving room for an optional AI provider integration later.
+> **AI note:** the current “smart actions” engine is deterministic business logic, not an external LLM call. This keeps the application reproducible and free from a paid AI dependency while leaving room for optional AI features later.
+
+## Screenshots
+
+Real production screenshots supplied for this project are used throughout the final portfolio presentation. They cover the dashboard, applications registry, analytics, profile, login, and session-restoration experience. The presentation treats them as product artifacts with annotated frames rather than mockups.
+
+## Technology stack
+
+| Layer | Technology | Why |
+|---|---|---|
+| Frontend | React + TypeScript + Vite | Component-based UI with static type checking and a fast Vite build |
+| Backend | Python + FastAPI + Pydantic | Typed REST API, validation, dependency injection, and OpenAPI docs |
+| ORM | SQLAlchemy 2.x | Structured database access and composable queries |
+| Database | PostgreSQL | Relational storage for accounts and application records |
+| Infrastructure | Supabase PostgreSQL | Managed PostgreSQL infrastructure |
+| Authentication | JWT + bcrypt | Signed bearer tokens plus password hashing |
+| Testing | pytest + FastAPI TestClient | Automated API and business-logic verification |
+| CI | GitHub Actions | Repeatable backend-test and frontend-build checks |
+| Deployment | Vercel | Production hosting and Git-based deployment |
 
 ## Architecture
 
 ```text
-React + TypeScript + Vite
-          |
-          | REST / JSON + Bearer JWT
-          v
-       FastAPI
-       /     \
-      /       \
-Authentication  Application API
-                    |
-                SQLAlchemy
-                    |
-                    v
-                PostgreSQL
+                    ┌─────────────────────┐
+                    │       USER          │
+                    │ Desktop / Android   │
+                    └──────────┬──────────┘
+                               │
+                               ▼
+                    ┌─────────────────────┐
+                    │ React + TypeScript  │
+                    │       + Vite        │
+                    └──────────┬──────────┘
+                               │ REST / JSON
+                               │ Bearer JWT
+                               ▼
+                    ┌─────────────────────┐
+                    │       FastAPI       │
+                    │ Auth + API + Rules  │
+                    └──────────┬──────────┘
+                               │ SQLAlchemy
+                               ▼
+                    ┌─────────────────────┐
+                    │ PostgreSQL /        │
+                    │ Supabase            │
+                    └─────────────────────┘
 ```
 
-## Data model
+The frontend and API share the production origin through Vercel routing. Application endpoints require a valid Bearer JWT, and queries are scoped to the authenticated user's ID.
 
-### users
+## Application workflow
 
-- `id` primary key
-- `email` unique, indexed
+```text
+REGISTER
+   ↓
+LOGIN
+   ↓
+JWT ACCESS TOKEN
+   ↓
+SESSION RESTORATION
+   ↓
+DASHBOARD
+   ↓
+ADD / EDIT APPLICATION
+   ↓
+TRACK STATUS + PRIORITY
+   ↓
+SET FOLLOW-UP / INTERVIEW
+   ↓
+SMART NEXT ACTION
+   ↓
+ANALYTICS
+   ↓
+OFFER / REJECTION / WITHDRAWAL
+```
+
+## Database
+
+### `users`
+
+- `id` - primary key
+- `email` - unique, indexed
 - `password_hash`
 - `full_name`
 - `created_at`
 
-### job_applications
+### `job_applications`
 
-- `id` primary key
-- `user_id` owner identifier
-- `company`, `role`, `location`
-- `status`, `priority`
+- `id` - primary key
+- `user_id` - authenticated owner identifier
+- `company`
+- `role`
+- `location`
+- `status`
+- `priority`
 - `salary`
 - `application_date`
-- `follow_up_date`, `interview_date`
-- `next_action`, `notes`
-- `created_at`, `updated_at`
+- `follow_up_date`
+- `interview_date`
+- `next_action`
+- `notes`
+- `created_at`
+- `updated_at`
 
-Existing PostgreSQL databases must run `backend/migrations/20260902_add_tracking_fields.sql` once after updating the application. Fresh databases created from the SQLAlchemy models include the new columns automatically.
+The `user_id` access pattern is indexed. Existing PostgreSQL databases use the migration at `backend/migrations/20260902_add_tracking_fields.sql`; fresh databases can be created from the SQLAlchemy models.
 
 ## API
 
 ### System
-
-- `GET /api/health` - health check
+- `GET /api/health`
 
 ### Authentication
-
-- `POST /api/auth/register` - create an account and receive a JWT
-- `POST /api/auth/login` - authenticate and receive a JWT
-- `GET /api/auth/me` - return the authenticated user
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `GET /api/auth/me`
 
 ### Applications
+- `GET /api/applications`
+- `GET /api/applications/{id}`
+- `POST /api/applications`
+- `PATCH /api/applications/{id}`
+- `DELETE /api/applications/{id}`
+- `GET /api/applications/analytics`
+- `GET /api/applications/smart-actions`
 
-- `GET /api/applications` - list applications; supports `search` and `status`
-- `GET /api/applications/{id}` - fetch one application
-- `POST /api/applications` - create an application
-- `PATCH /api/applications/{id}` - update an application
-- `DELETE /api/applications/{id}` - delete an application
-- `GET /api/applications/analytics` - user-scoped pipeline totals and status counts
-- `GET /api/applications/smart-actions` - user-scoped next-action recommendations
+Application endpoints require Bearer authentication. List, analytics, smart-action, and single-record queries enforce authenticated user ownership.
 
-All application routes require a valid Bearer JWT. Records are always queried using the authenticated user's ID, preventing one user from reading or modifying another user's applications.
+## Authentication and security
 
-## Tech stack
+1. User submits credentials.
+2. Backend verifies the password against a bcrypt hash.
+3. Backend returns a signed JWT containing the user ID and expiry.
+4. Frontend stores the access token under `job-tracker-token`.
+5. Protected requests send `Authorization: Bearer <token>`.
+6. FastAPI verifies the JWT and resolves the authenticated user.
+7. Application queries are filtered by that user ID.
 
-- Frontend: React, TypeScript, Vite
-- Backend: Python, FastAPI, Pydantic
-- ORM: SQLAlchemy 2.x
-- Database: PostgreSQL
-- Authentication: JWT + bcrypt
-- Testing: pytest + FastAPI TestClient
-- CI: GitHub Actions
+The frontend also has an explicit authentication-initialization state. On refresh it waits for `/api/auth/me` to restore the user before rendering the login state. Only a confirmed 401 causes the saved token to be removed; non-authentication bootstrap failures do not silently log the user out.
 
-## Local setup
+Secrets, database credentials, API keys, and service-role credentials are kept in environment variables and are not committed.
+
+## Local development
 
 ### Backend
 
 ```bash
 cd backend
 python -m venv .venv
-# Windows: .venv\\Scripts\\activate
-# macOS/Linux: source .venv/bin/activate
+
+# Windows
+.venv\\Scripts\\activate
+
+# macOS/Linux
+source .venv/bin/activate
+
 pip install -r requirements.txt
-```
-
-Create `backend/.env` using the values in `backend/.env.example`. Configure a PostgreSQL database, then run any required migration from `backend/migrations/`.
-
-Start the API:
-
-```bash
 uvicorn app.main:app --reload
 ```
 
 API docs: `http://127.0.0.1:8000/docs`
+
+Create `backend/.env` from `backend/.env.example` and provide a PostgreSQL connection and JWT settings.
 
 ### Frontend
 
@@ -134,70 +204,78 @@ npm install
 npm run dev
 ```
 
-Set `VITE_API_URL` when the API is not running at the default local URL.
+If the API is not served from the default local origin, configure `VITE_API_URL`.
 
-## Testing
+## Testing and verification
 
-Backend tests live in `backend/tests/test_api.py` and cover health, registration, authenticated `/me`, application CRUD, search, analytics, smart actions, user isolation, and status/priority validation.
+Verified on repository revision `5d85c84600e2f58b99a2a5c1d92abfd86bca58f5`:
 
-Run locally with:
+- GitHub Actions **Backend Tests**: PASS
+- GitHub Actions **Frontend Build**: PASS
+- Frontend authentication bootstrap regression check: PASS
+- Production `GET /api/health`: HTTP 200
+- Production unauthenticated `GET /api/applications`: HTTP 401
+- Production application detail route `/applications/1`: HTTP 200 and serves the SPA shell
+- Vercel production deployment: READY
+- Vercel production runtime error/fatal log check for the inspected window: no entries
+- Real Android-device acceptance: user-confirmed login/session persistence works after the authentication fix
 
-```bash
-cd backend
-pytest -q
-```
-
-Verified GitHub Actions run for the backend suite: **success** on the latest code revision. Verified frontend production build: **success** on the latest code revision. Earlier CI failures were fixed during development and are retained in the repository history as useful debugging evidence.
-
-## Security
-
-- Never commit `.env` files, API keys, passwords, database credentials, or service-role secrets.
-- Passwords are stored as bcrypt hashes.
-- Protected endpoints require a Bearer JWT.
-- Application queries are scoped to the authenticated user.
-- Input lengths and application status/priority values are validated server-side.
-- CORS is configured through environment settings.
+The automated suite covers health, registration, authenticated `/me`, application CRUD, search, analytics, smart actions, user isolation, and status/priority validation.
 
 ## Deployment
 
-A production deployment is not claimed yet. The connected Vercel account currently has projects for other repositories, but no Vercel project linked to this repository. No unrelated project was deployed or modified.
+**Vercel project:** `ai-job-application-tracker`  
+**Production URL:** https://ai-job-application-tracker-rose.vercel.app  
+**Latest verified production deployment:** `dpl_2d2hsnXKg9HdpejpvBfRFh5sdn3R`  
+**Source commit:** `5d85c84600e2f58b99a2a5c1d92abfd86bca58f5`
 
-For a production deployment, connect this repository to a free Vercel project for the frontend and configure `VITE_API_URL` to a verified production API. The FastAPI backend also requires a production host and PostgreSQL connection. No paid service or billing upgrade is required by the repository itself.
+Production routing serves the React SPA and the FastAPI API through the same Vercel project. PostgreSQL is hosted on Supabase.
 
-## Interview material
+No paid service or billing upgrade was required for the verified deployment.
 
-- [`INTERVIEW_CHEAT_SHEET.md`](./INTERVIEW_CHEAT_SHEET.md) contains the 30-second and 2-minute explanations, technology/architecture/security/API/database Q&A, project-specific questions, debugging/scalability questions, HR questions, and rapid revision notes.
-- A presentation deck is provided separately with the project deliverables.
+## Engineering challenge: authentication persistence
 
-## Project status
+### Problem
+A valid saved JWT existed after refresh, but the React application initially rendered the unauthenticated branch before `/api/auth/me` finished restoring the user.
 
-### Code-complete MVP
+### Fix
+Added an explicit authentication bootstrap state, restored the user before deciding whether to show the login screen, and limited token removal to confirmed 401 authentication failures.
 
-- Foundation and architecture
-- PostgreSQL/SQLAlchemy data model
-- CRUD API
-- JWT authentication
-- React frontend integration
-- Search and filtering
-- Edit/delete workflow
-- Analytics dashboard
-- Follow-up/interview tracking
-- Priority management
-- Smart next-action recommendations
-- Automated backend tests
-- Frontend build CI
-- Security and setup documentation
-- Interview cheat sheet
-- Presentation deck
+### Result
+The session now survives page refresh. The real Android-device workflow was confirmed working.
 
-### Optional future scope
+Relevant commits:
 
-- Calendar integration for interview dates
-- Email/reminder notifications
+- `d49ffa001956300bdbcaebdf236307b443b47812` - `fix: persist authentication across page refresh`
+- `4c7f44bce5eda73e86c2ecc210b35d50b226165e` - `chore: remove one-time auth fix workflow`
+- `5d85c84600e2f58b99a2a5c1d92abfd86bca58f5` - `fix: serve application detail routes through SPA`
+
+## Lessons learned
+
+- Authentication is both a backend security boundary and a frontend state-management problem.
+- Persisting a token is not enough; the UI must explicitly bootstrap the authenticated user.
+- Database migrations are necessary when existing schemas evolve.
+- User ownership must be enforced in backend queries, not just hidden in the UI.
+- Deterministic business logic can deliver useful recommendations without forcing an external AI dependency.
+- CI catches regressions that are easy to miss during manual development.
+- Production routing needs to support direct navigation to SPA routes.
+
+## Future scope
+
+- Calendar integration for interviews
+- Email or push reminders for follow-ups
+- Pagination and server-side sorting for larger datasets
 - CSV/JSON export
-- Optional LLM-powered resume/job matching or application coaching using a user-supplied API key
-- Production deployment after a suitable free-tier backend host and database are configured
+- Optional LLM-powered resume/job matching or application coaching using user-supplied credentials
+- Workspace/team support for multi-user recruiting workflows
 
-## License
+## Portfolio deliverables
 
-MIT
+The final project presentation and authentic screenshot assets are delivered alongside the repository. The interview preparation guide is versioned in the repository:
+
+- [`INTERVIEW_CHEAT_SHEET.md`](./INTERVIEW_CHEAT_SHEET.md)
+
+## Author
+
+**MOHAMMED OWAIES**  
+GitHub: https://github.com/owaies
