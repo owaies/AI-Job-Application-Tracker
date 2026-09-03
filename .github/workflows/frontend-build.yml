@@ -23,30 +23,23 @@ jobs:
         run: |
           cd frontend
           npm run build
-      - name: Build with alternate minifier
+      - name: Build with Terser
         run: |
           cd frontend
-          npx vite build --minify esbuild --outDir dist-esbuild
-      - name: Compare compiled ApplicationsPage wiring
+          npm install --no-save terser
+          npx vite build --minify terser --outDir dist-terser
+      - name: Compare default and Terser wiring
         run: |
           node <<'NODE'
           const fs = require('fs')
           const path = require('path')
-          function inspect(dir) {
+          for (const dir of ['frontend/dist','frontend/dist-terser']) {
             const js = fs.readdirSync(path.join(dir,'assets')).find(f => f.endsWith('.js') && !f.endsWith('.map'))
             const code = fs.readFileSync(path.join(dir,'assets',js), 'utf8')
-            const needles = ['setPriorityFilter', 'priorityFilter:']
+            const p = code.indexOf('priorityFilter:')
             console.log(`--- ${dir}/${js} ---`)
-            for (const needle of needles) {
-              let p=0, n=0
-              while ((p=code.indexOf(needle,p)) !== -1 && n<5) {
-                console.log(`${needle}@${p}: ${code.slice(Math.max(0,p-180),p+420)}`)
-                p += needle.length; n++
-              }
-            }
+            console.log(code.slice(Math.max(0,p-250), p+650))
           }
-          inspect('frontend/dist')
-          inspect('frontend/dist-esbuild')
           NODE
       - name: Verify source map locations
         run: |
