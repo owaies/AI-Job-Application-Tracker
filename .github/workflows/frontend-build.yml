@@ -5,6 +5,9 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -86,10 +89,10 @@ jobs:
           rm -f .github/workflows/debug-source-map.yml .github/workflows/apply-custom-select-fix.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add frontend/src/App.tsx frontend/src/custom-select.contract.ts .github/workflows/debug-source-map.yml
+          git add frontend/src/App.tsx frontend/src/custom-select.contract.ts .github/workflows/debug-source-map.yml .github/workflows/apply-custom-select-fix.yml
           if git diff --cached --quiet; then
             echo 'No changes to commit.'
           else
-            git commit -m 'fix: correct CustomSelect priority filter value'
+            git commit -m 'fix: correct priority filter select value wiring'
             git push origin HEAD:main
           fi
