@@ -1,51 +1,93 @@
-name: Debug production source map
+name: Apply exact CustomSelect fix
 
 on:
   push:
     branches: [main]
 
+permissions:
+  contents: write
+
 jobs:
-  map-production-stack:
+  fix:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Node
+        uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Install frontend dependencies
-        run: npm install --include=dev
-        working-directory: frontend
-      - name: Install source-map parser
-        run: npm install --no-save source-map@0.7.6
-        working-directory: frontend
-      - name: Build production bundle
-        run: npm run build
-        working-directory: frontend
-      - name: Map browser stack locations to original source
+      - name: Apply exact source fix
         run: |
-          node <<'NODE'
-          const fs = require('fs');
-          const path = require('path');
-          const { SourceMapConsumer } = require('./node_modules/source-map');
-          const assets = fs.readdirSync('dist/assets');
-          const mapFile = assets.find(f => f.endsWith('.js.map'));
-          if (!mapFile) throw new Error('No JavaScript source map generated');
-          const map = JSON.parse(fs.readFileSync(path.join('dist/assets', mapFile), 'utf8'));
-          const targets = [
-            [9, 43552],
-            [9, 44427],
-            [9, 45177],
-          ];
-          console.log('MAP_FILE=' + mapFile);
-          console.log('SOURCES=' + JSON.stringify(map.sources));
-          SourceMapConsumer.with(map, null, consumer => {
-            for (const [line, column] of targets) {
-              const pos = consumer.originalPositionFor({ line, column, bias: SourceMapConsumer.GREATEST_LOWER_BOUND });
-              console.log(`GENERATED ${line}:${column} -> ${JSON.stringify(pos)}`);
-            }
-          });
-          NODE
-      - name: Enumerate frontend replace calls
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('frontend/src/App.tsx')
+          s = p.read_text()
+          diagnostic = '''  const runtimeActive: unknown = active
+          if (typeof runtimeActive !== 'string') {
+            const tag = Object.prototype.toString.call(runtimeActive)
+            const description = typeof runtimeActive === 'function' ? `[Function ${runtimeActive.name || 'anonymous'}]` : String(runtimeActive)
+            throw new Error(`CustomSelect invalid value: label=${String(label)}; type=${typeof runtimeActive}; tag=${tag}; value=${description}`)
+          }
+          '''
+          if diagnostic not in s:
+              raise SystemExit('Temporary CustomSelect diagnostic not found; aborting rather than guessing.')
+          s = s.replace(diagnostic, '', 1)
+          old_props = "function CustomSelect({ label, value, options, onChange, placeholder = 'SELECT' }: { label?: string; value: string; options: string[]; onChange: (value: string) => void; placeholder?: string }) {"
+          new_props = "export interface CustomSelectProps { label?: string; value: string; options: string[]; onChange: (value: string) => void; placeholder?: string }\n\nfunction CustomSelect({ label, value, options, onChange, placeholder = 'SELECT' }: CustomSelectProps) {"
+          if s.count(old_props) != 1:
+              raise SystemExit(f'Expected one CustomSelect declaration, found {s.count(old_props)}')
+          s = s.replace(old_props, new_props, 1)
+          old_page = "function ApplicationsPage({ applications, search, setSearch, statusFilter, setStatusFilter, priorityFilter, setPriorityFilter, sort, setSort, go, onAdd, onEdit, onDelete }: any) {"
+          new_page = "export interface ApplicationsPageProps {\n  applications: JobApplication[]\n  search: string\n  setSearch: React.Dispatch<React.SetStateAction<string>>\n  statusFilter: string\n  setStatusFilter: React.Dispatch<React.SetStateAction<string>>\n  priorityFilter: string\n  setPriorityFilter: React.Dispatch<React.SetStateAction<string>>\n  sort: string\n  setSort: React.Dispatch<React.SetStateAction<string>>\n  go: (p: string) => void\n  onAdd: () => void\n  onEdit: (a: JobApplication) => void\n  onDelete: (id: number) => void\n}\n\nfunction ApplicationsPage({ applications, search, setSearch, statusFilter, setStatusFilter, priorityFilter, setPriorityFilter, sort, setSort, go, onAdd, onEdit, onDelete }: ApplicationsPageProps) {"
+          if s.count(old_page) != 1:
+              raise SystemExit(f'Expected one untyped ApplicationsPage declaration, found {s.count(old_page)}')
+          s = s.replace(old_page, new_page, 1)
+          if 'priorityFilter={setPriorityFilter}' in s or 'value={setPriorityFilter}' in s:
+              raise SystemExit('Incorrect priority setter-to-value wiring remains.')
+          if 'priorityFilter={priorityFilter} setPriorityFilter={setPriorityFilter}' not in s:
+              raise SystemExit('Correct priority filter wiring is missing.')
+          p.write_text(s)
+          PY
+      - name: Add compile-time regression contract
         run: |
-          grep -RIn --exclude-dir=node_modules '\.replace(' src || true
-        working-directory: frontend
+          cat > frontend/src/custom-select.contract.ts <<'EOF'
+          import type { CustomSelectProps } from './App'
+          const validProps: CustomSelectProps = {
+            label: 'PRIORITY',
+            value: 'medium',
+            options: ['low', 'medium', 'high'],
+            onChange: value => {
+              const next: string = value
+              void next
+            },
+          }
+          void validProps
+          // @ts-expect-error A function/setter must never be accepted as CustomSelect.value.
+          const invalidProps: CustomSelectProps = {
+            label: 'PRIORITY',
+            value: (value: string) => value,
+            options: ['low', 'medium', 'high'],
+            onChange: value => void value,
+          }
+          void invalidProps
+          EOF
+      - name: Verify and build frontend
+        run: |
+          grep -n 'CustomSelectProps' frontend/src/App.tsx
+          grep -n 'ApplicationsPageProps' frontend/src/App.tsx
+          grep -n 'priorityFilter={priorityFilter} setPriorityFilter={setPriorityFilter}' frontend/src/App.tsx
+          test "$(grep -o 'priorityFilter={setPriorityFilter}' frontend/src/App.tsx | wc -l)" -eq 0
+          cd frontend
+          npm install --include=dev
+          npm run build
+      - name: Commit fix and remove one-time workflows
+        run: |
+          rm -f .github/workflows/debug-source-map.yml .github/workflows/apply-custom-select-fix.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add frontend/src/App.tsx frontend/src/custom-select.contract.ts .github/workflows/debug-source-map.yml .github/workflows/apply-custom-select-fix.yml
+          git commit -m 'fix: correct CustomSelect priority filter wiring'
+          git push origin HEAD:main
