@@ -23,32 +23,27 @@ jobs:
           from pathlib import Path
           p = Path('frontend/src/App.tsx')
           s = p.read_text().replace('\r\n', '\n')
-
           marker = '  const runtimeActive: unknown = active\n'
           if marker in s:
               start = s.index(marker)
               end = s.index('  useEffect', start)
               s = s[:start] + s[end:]
-
           wrong = 'priorityFilter={setPriorityFilter}'
           if s.count(wrong) != 1:
               raise SystemExit(f'Expected exactly one bad priority wiring, found {s.count(wrong)}')
           s = s.replace(wrong, 'priorityFilter={priorityFilter}', 1)
-
           old_props = "function CustomSelect({ label, value, options, onChange, placeholder = 'SELECT' }: { label?: string; value: string; options: string[]; onChange: (value: string) => void; placeholder?: string }) {"
           new_props = "export interface CustomSelectProps { label?: string; value: string; options: string[]; onChange: (value: string) => void; placeholder?: string }\n\nfunction CustomSelect({ label, value, options, onChange, placeholder = 'SELECT' }: CustomSelectProps) {"
           if 'export interface CustomSelectProps' not in s:
               if s.count(old_props) != 1:
                   raise SystemExit(f'CustomSelect declaration mismatch: {s.count(old_props)}')
               s = s.replace(old_props, new_props, 1)
-
           old_page = "function ApplicationsPage({ applications, search, setSearch, statusFilter, setStatusFilter, priorityFilter, setPriorityFilter, sort, setSort, go, onAdd, onEdit, onDelete }: any) {"
           new_page = "export interface ApplicationsPageProps {\n  applications: JobApplication[]\n  search: string\n  setSearch: React.Dispatch<React.SetStateAction<string>>\n  statusFilter: string\n  setStatusFilter: React.Dispatch<React.SetStateAction<string>>\n  priorityFilter: string\n  setPriorityFilter: React.Dispatch<React.SetStateAction<string>>\n  sort: string\n  setSort: React.Dispatch<React.SetStateAction<string>>\n  go: (p: string) => void\n  onAdd: () => void\n  onEdit: (a: JobApplication) => void\n  onDelete: (id: number) => void\n}\n\nfunction ApplicationsPage({ applications, search, setSearch, statusFilter, setStatusFilter, priorityFilter, setPriorityFilter, sort, setSort, go, onAdd, onEdit, onDelete }: ApplicationsPageProps) {"
           if 'export interface ApplicationsPageProps' not in s:
               if s.count(old_page) != 1:
                   raise SystemExit(f'ApplicationsPage declaration mismatch: {s.count(old_page)}')
               s = s.replace(old_page, new_page, 1)
-
           expected = '<CustomSelect label="PRIORITY" value={priorityFilter} options={[\'\', ...PRIORITIES]} onChange={setPriorityFilter}'
           if expected not in s:
               raise SystemExit('Final PRIORITY CustomSelect value/onChange contract is missing')
@@ -58,24 +53,16 @@ jobs:
         run: |
           cat > frontend/src/custom-select.contract.ts <<'EOF'
           import type { CustomSelectProps } from './App'
-
           const validProps: CustomSelectProps = {
-            label: 'PRIORITY',
-            value: 'medium',
-            options: ['low', 'medium', 'high'],
-            onChange: value => {
-              const next: string = value
-              void next
-            },
+            label: 'PRIORITY', value: 'medium', options: ['low', 'medium', 'high'],
+            onChange: value => { const next: string = value; void next },
           }
           void validProps
-
           const invalidProps: CustomSelectProps = {
             label: 'PRIORITY',
             // @ts-expect-error A function/setter must never be accepted as CustomSelect.value.
             value: (value: string) => value,
-            options: ['low', 'medium', 'high'],
-            onChange: value => void value,
+            options: ['low', 'medium', 'high'], onChange: value => void value,
           }
           void invalidProps
           EOF
@@ -94,7 +81,7 @@ jobs:
           console.log(`Compiled priorityFilter=${match[1]}, setPriorityFilter=${match[2]}`)
           if (match[1] === match[2]) throw new Error('Compiled bundle aliases priorityFilter and setPriorityFilter')
           NODE
-      - name: Commit exact fix and remove temporary debug workflow
+      - name: Commit exact fix and remove temporary diagnostics
         run: |
           rm -f .github/workflows/debug-source-map.yml .github/workflows/apply-custom-select-fix.yml
           git config user.name 'github-actions[bot]'
