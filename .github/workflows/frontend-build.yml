@@ -15,36 +15,38 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Build exact production bundle
+      - name: Install frontend dependencies
         run: |
           cd frontend
           npm install --include=dev
-          npm run build
-      - name: Inspect minified compiled wiring
-        run: |
-          node <<'NODE'
-          const fs = require('fs')
-          const path = require('path')
-          const js = fs.readdirSync('frontend/dist/assets').find(f => f.endsWith('.js') && !f.endsWith('.map'))
-          const code = fs.readFileSync(path.join('frontend/dist/assets', js), 'utf8')
-          const pos = code.indexOf('k===`applications`&&!le')
-          console.log('MINIFIED_BUNDLE=' + js)
-          console.log(code.slice(pos, pos + 1000))
-          NODE
-      - name: Build unminified comparison bundle
+      - name: Build default Vite production bundle
         run: |
           cd frontend
-          npx vite build --minify false --outDir dist-unminified
-      - name: Inspect unminified wiring
+          npm run build
+      - name: Build with alternate minifier
+        run: |
+          cd frontend
+          npx vite build --minify esbuild --outDir dist-esbuild
+      - name: Compare compiled ApplicationsPage wiring
         run: |
           node <<'NODE'
           const fs = require('fs')
           const path = require('path')
-          const js = fs.readdirSync('frontend/dist-unminified/assets').find(f => f.endsWith('.js') && !f.endsWith('.map'))
-          const code = fs.readFileSync(path.join('frontend/dist-unminified/assets', js), 'utf8')
-          const pos = code.indexOf('priorityFilter')
-          console.log('UNMINIFIED_BUNDLE=' + js)
-          console.log(code.slice(Math.max(0, pos - 1000), pos + 2500))
+          function inspect(dir) {
+            const js = fs.readdirSync(path.join(dir,'assets')).find(f => f.endsWith('.js') && !f.endsWith('.map'))
+            const code = fs.readFileSync(path.join(dir,'assets',js), 'utf8')
+            const needles = ['setPriorityFilter', 'priorityFilter:']
+            console.log(`--- ${dir}/${js} ---`)
+            for (const needle of needles) {
+              let p=0, n=0
+              while ((p=code.indexOf(needle,p)) !== -1 && n<5) {
+                console.log(`${needle}@${p}: ${code.slice(Math.max(0,p-180),p+420)}`)
+                p += needle.length; n++
+              }
+            }
+          }
+          inspect('frontend/dist')
+          inspect('frontend/dist-esbuild')
           NODE
       - name: Verify source map locations
         run: |
