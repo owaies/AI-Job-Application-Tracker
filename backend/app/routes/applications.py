@@ -46,7 +46,7 @@ def list_applications(search: str | None = Query(default=None, max_length=100), 
     if status_filter:
         _validate_status(status_filter)
         query = query.where(JobApplication.status == status_filter)
-    return list(db.scalars(query.order_by(JobApplication.created_at.desc())))
+    return list(db.scalars(query.order_by(JobApplication.created_at.desc(), JobApplication.id.desc())))
 
 
 @router.get("/analytics")
