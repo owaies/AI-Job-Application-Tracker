@@ -41,7 +41,7 @@ def _get_application(application_id: int, user_id: int, db: Session) -> JobAppli
 def list_applications(search: str | None = Query(default=None, max_length=100), status_filter: str | None = Query(default=None, alias="status", max_length=40), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> list[JobApplication]:
     query = select(JobApplication).where(JobApplication.user_id == current_user.id)
     if search:
-        term = f"%{search.strip()}%"
+        term = f"%{search.strip().lower()}%"
         query = query.where(or_(JobApplication.company.ilike(term), JobApplication.role.ilike(term), JobApplication.location.ilike(term)))
     if status_filter:
         _validate_status(status_filter)
