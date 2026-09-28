@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr, Field, ConfigDict
+from pydantic import BaseModel, Field, EmailStr, Field, ConfigDict
 
 
 class RegisterRequest(BaseModel):
