@@ -76,6 +76,8 @@ def smart_actions(current_user: User = Depends(get_current_user), db: Session = 
             recommendation, reason = "Prepare interview questions and company research", "An upcoming interview is scheduled."
         elif follow_up_date and follow_up_date <= now:
             recommendation, reason = "Send a follow-up message", "The follow-up date is due."
+        elif item.status == "interview" and interview_date and interview_date < now:
+            recommendation, reason = "Record interview outcome and next steps", "The scheduled interview date has passed."
         elif item.status == "interview":
             recommendation, reason = "Add the interview date and preparation notes", "The application is at the interview stage."
         elif item.status == "screening":
