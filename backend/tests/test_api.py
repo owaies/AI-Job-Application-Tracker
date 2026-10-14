@@ -109,3 +109,22 @@ def test_validation(client):
     assert bad_status.status_code == 422
     bad_priority = client.post("/api/applications", json={"company": "X", "role": "Y", "priority": "urgent"}, headers=headers)
     assert bad_priority.status_code == 422
+
+def test_application_search_treats_like_wildcards_literally(client):
+    token = register(client, "wildcards@example.com")
+    headers = auth_header(token)
+    for company in ("Acme Labs", "Acme% Labs", "Acme_ Labs"):
+        response = client.post(
+            "/api/applications",
+            json={"company": company, "role": "Engineer"},
+            headers=headers,
+        )
+        assert response.status_code == 201
+
+    percent_search = client.get("/api/applications?search=Acme%25", headers=headers)
+    assert percent_search.status_code == 200
+    assert [item["company"] for item in percent_search.json()] == ["Acme% Labs"]
+
+    underscore_search = client.get("/api/applications?search=Acme_", headers=headers)
+    assert underscore_search.status_code == 200
+    assert [item["company"] for item in underscore_search.json()] == ["Acme_ Labs"]
