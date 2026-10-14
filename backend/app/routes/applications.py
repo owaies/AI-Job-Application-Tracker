@@ -42,8 +42,16 @@ def list_applications(search: str | None = Query(default=None, max_length=100), 
     query = select(JobApplication).where(JobApplication.user_id == current_user.id)
     normalized_search = search.strip() if search else ""
     if normalized_search:
-        term = f"%{normalized_search.lower()}%"
-        query = query.where(or_(JobApplication.company.ilike(term), JobApplication.role.ilike(term), JobApplication.location.ilike(term)))
+        # Treat user-provided SQL LIKE metacharacters as literal search text.
+        escaped_search = normalized_search.lower().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        term = f"%{escaped_search}%"
+        query = query.where(
+            or_(
+                JobApplication.company.ilike(term, escape="\\"),
+                JobApplication.role.ilike(term, escape="\\"),
+                JobApplication.location.ilike(term, escape="\\"),
+            )
+        )
     if status_filter:
         _validate_status(status_filter)
         query = query.where(JobApplication.status == status_filter)
