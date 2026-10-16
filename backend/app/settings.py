@@ -21,7 +21,15 @@ class Settings(BaseSettings):
 
     @property
     def cors_origin_list(self) -> list[str]:
-        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+        """Return normalized, unique origins for Starlette's exact-match CORS check."""
+        origins: list[str] = []
+        seen: set[str] = set()
+        for value in self.cors_origins.split(","):
+            origin = value.strip().rstrip("/")
+            if origin and origin not in seen:
+                origins.append(origin)
+                seen.add(origin)
+        return origins
 
 
 settings = Settings()
