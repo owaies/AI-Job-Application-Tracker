@@ -128,3 +128,18 @@ def test_application_search_treats_like_wildcards_literally(client):
     underscore_search = client.get("/api/applications?search=Acme_", headers=headers)
     assert underscore_search.status_code == 200
     assert [item["company"] for item in underscore_search.json()] == ["Acme_ Labs"]
+
+
+def test_cors_origins_are_trimmed_normalized_and_deduplicated():
+    from app.settings import Settings
+
+    config = Settings(
+        jwt_secret_key="test-secret-key-that-is-at-least-32-chars",
+        cors_origins=" https://app.example.com/, http://localhost:5173, https://app.example.com/ ,, ",
+    )
+
+    assert config.cors_origin_list == [
+        "https://app.example.com",
+        "http://localhost:5173",
+    ]
+
