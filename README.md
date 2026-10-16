@@ -196,6 +196,14 @@ API docs: `http://127.0.0.1:8000/docs`
 
 Create `backend/.env` from `backend/.env.example` and provide a PostgreSQL connection and JWT settings.
 
+Configure allowed browser origins with `CORS_ORIGINS` in `backend/.env`. Use a comma-separated list when the frontend is hosted on more than one origin, for example:
+
+```env
+CORS_ORIGINS=http://localhost:5173,https://your-frontend.example.com
+```
+
+Whitespace and trailing slashes are normalized, and duplicate origins are removed. Keep this list limited to trusted frontend origins; do not use `*` when credentials are enabled.
+
 ### Frontend
 
 ```bash
