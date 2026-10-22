@@ -143,3 +143,13 @@ def test_cors_origins_are_trimmed_normalized_and_deduplicated():
         "http://localhost:5173",
     ]
 
+
+def test_protected_endpoint_rejects_missing_and_malformed_bearer_tokens(client):
+    missing = client.get("/api/auth/me")
+    malformed = client.get(
+        "/api/auth/me",
+        headers=auth_header("not-a-valid-jwt"),
+    )
+
+    assert missing.status_code == 401
+    assert malformed.status_code == 401
