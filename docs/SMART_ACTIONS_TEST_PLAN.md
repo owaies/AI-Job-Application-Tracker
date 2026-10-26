@@ -13,3 +13,9 @@ Recommendations must use only the authenticated user's application records.
 
 ## Regression
 When a rule changes, record representative inputs and expected next actions so the behavior can be compared across releases.
+
+## Datetime normalization regression
+- Verify naive database datetimes are interpreted as UTC.
+- Verify timezone-aware values are converted to UTC before comparing follow-up and interview dates.
+- Verify missing dates remain unset and do not create recommendations by themselves.
+
