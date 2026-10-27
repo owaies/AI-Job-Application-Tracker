@@ -110,6 +110,7 @@ def test_validation(client):
     bad_priority = client.post("/api/applications", json={"company": "X", "role": "Y", "priority": "urgent"}, headers=headers)
     assert bad_priority.status_code == 422
 
+
 def test_application_search_treats_like_wildcards_literally(client):
     token = register(client, "wildcards@example.com")
     headers = auth_header(token)
@@ -153,3 +154,19 @@ def test_protected_endpoint_rejects_missing_and_malformed_bearer_tokens(client):
 
     assert missing.status_code == 401
     assert malformed.status_code == 401
+
+
+def test_registration_trims_full_name_and_treats_blank_as_missing(client):
+    trimmed = client.post(
+        "/api/auth/register",
+        json={"email": "trimmed@example.com", "password": "password123", "full_name": "  Ada Lovelace  "},
+    )
+    blank = client.post(
+        "/api/auth/register",
+        json={"email": "blank@example.com", "password": "password123", "full_name": "   "},
+    )
+
+    assert trimmed.status_code == 201
+    assert trimmed.json()["user"]["full_name"] == "Ada Lovelace"
+    assert blank.status_code == 201
+    assert blank.json()["user"]["full_name"] is None
