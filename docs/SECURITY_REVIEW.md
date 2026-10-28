@@ -13,3 +13,10 @@ Treat dates received from the client as untrusted input and validate them before
 
 ## Release checks
 Test unauthorized requests, cross-user record access, invalid identifiers, and failed database operations before production releases.
+
+
+## Password byte limits
+
+The API uses bcrypt through Passlib, whose password input limit is 72 UTF-8 bytes. Validate this at the request-schema boundary for both registration and login so multibyte passwords cannot pass character-count validation and then fail during hashing or verification.
+
+Regression coverage: `pytest backend/tests/test_auth_password_limits.py` checks the 72-byte boundary with ASCII and multibyte UTF-8 input.
