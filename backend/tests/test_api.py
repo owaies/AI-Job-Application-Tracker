@@ -170,3 +170,52 @@ def test_registration_trims_full_name_and_treats_blank_as_missing(client):
     assert trimmed.json()["user"]["full_name"] == "Ada Lovelace"
     assert blank.status_code == 201
     assert blank.json()["user"]["full_name"] is None
+
+
+def test_application_names_are_trimmed_and_cannot_be_blank(client):
+    token = register(client, "application-names@example.com")
+    headers = auth_header(token)
+    created = client.post(
+        "/api/applications",
+        json={"company": "  Acme Labs  ", "role": "  Engineer  "},
+        headers=headers,
+    )
+
+    assert created.status_code == 201
+    assert created.json()["company"] == "Acme Labs"
+    assert created.json()["role"] == "Engineer"
+
+    for payload in (
+        {"company": "   ", "role": "Engineer"},
+        {"company": "Acme Labs", "role": "   "},
+    ):
+        response = client.post("/api/applications", json=payload, headers=headers)
+        assert response.status_code == 422
+
+
+def test_application_updates_reject_null_required_fields(client):
+    token = register(client, "null-update@example.com")
+    headers = auth_header(token)
+    created = client.post(
+        "/api/applications",
+        json={"company": "Acme Labs", "role": "Engineer"},
+        headers=headers,
+    )
+    assert created.status_code == 201
+    application_id = created.json()["id"]
+
+    for field in ("company", "role", "application_date"):
+        response = client.patch(
+            f"/api/applications/{application_id}",
+            json={field: None},
+            headers=headers,
+        )
+        assert response.status_code == 422, field
+
+    for field in ("company", "role"):
+        response = client.patch(
+            f"/api/applications/{application_id}",
+            json={field: "   "},
+            headers=headers,
+        )
+        assert response.status_code == 422, field
