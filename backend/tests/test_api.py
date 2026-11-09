@@ -219,3 +219,40 @@ def test_application_updates_reject_null_required_fields(client):
             headers=headers,
         )
         assert response.status_code == 422, field
+
+
+
+def test_application_notes_respect_database_limit(client):
+    token = register(client, "notes-limit@example.com")
+    headers = auth_header(token)
+
+    accepted = client.post(
+        "/api/applications",
+        json={"company": "Acme", "role": "Engineer", "notes": "n" * 5000},
+        headers=headers,
+    )
+    assert accepted.status_code == 201
+    application_id = accepted.json()["id"]
+    assert len(accepted.json()["notes"]) == 5000
+
+    rejected_create = client.post(
+        "/api/applications",
+        json={"company": "Acme", "role": "Designer", "notes": "n" * 5001},
+        headers=headers,
+    )
+    assert rejected_create.status_code == 422
+
+    rejected_update = client.patch(
+        f"/api/applications/{application_id}",
+        json={"notes": "n" * 5001},
+        headers=headers,
+    )
+    assert rejected_update.status_code == 422
+
+    accepted_update = client.patch(
+        f"/api/applications/{application_id}",
+        json={"notes": "u" * 5000},
+        headers=headers,
+    )
+    assert accepted_update.status_code == 200
+    assert len(accepted_update.json()["notes"]) == 5000
