@@ -32,7 +32,7 @@ class JobApplicationBase(BaseModel):
     follow_up_date: Optional[datetime] = None
     interview_date: Optional[datetime] = None
     next_action: Optional[str] = Field(default=None, max_length=500)
-    notes: Optional[str] = None
+    notes: Optional[str] = Field(default=None, max_length=5000)
 
 
 class JobApplicationCreate(JobApplicationBase):
@@ -64,7 +64,7 @@ class JobApplicationUpdate(BaseModel):
     follow_up_date: Optional[datetime] = None
     interview_date: Optional[datetime] = None
     next_action: Optional[str] = Field(default=None, max_length=500)
-    notes: Optional[str] = None
+    notes: Optional[str] = Field(default=None, max_length=5000)
 
 
 class JobApplicationRead(JobApplicationBase):
