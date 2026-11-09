@@ -24,9 +24,10 @@ The frontend has a browser-oriented test surface under `frontend/tests/` and a p
 3. Create an application.
 4. Edit and search the application.
 5. Change its tracking status.
-6. Confirm another user cannot access the first user's application.
-7. Refresh the browser and confirm the authenticated state behaves as expected.
-8. Call a protected endpoint without an Authorization header and confirm it returns `401`.
-9. Call a protected endpoint with an expired or malformed bearer token and confirm it returns `401`, without exposing token details in the response.
+6. Confirm application notes accept up to 5,000 characters and reject longer create or update payloads.
+7. Confirm another user cannot access the first user's application.
+8. Refresh the browser and confirm the authenticated state behaves as expected.
+9. Call a protected endpoint without an Authorization header and confirm it returns `401`.
+10. Call a protected endpoint with an expired or malformed bearer token and confirm it returns `401`, without exposing token details in the response.
 
 Record failures as code or test changes rather than marking a workflow complete without verification.
