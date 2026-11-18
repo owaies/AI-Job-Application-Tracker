@@ -158,6 +158,8 @@ The `user_id` access pattern is indexed. Existing PostgreSQL databases use the m
 - `GET /api/applications/analytics`
 - `GET /api/applications/smart-actions`
 
+Smart-action results use a stable order: high, medium, then low priority; company name; role name; and application ID as a final tie-breaker. This keeps equal-priority recommendations in a consistent order across requests.
+
 Application endpoints require Bearer authentication. List, analytics, smart-action, and single-record queries enforce authenticated user ownership.
 
 ## Authentication and security
