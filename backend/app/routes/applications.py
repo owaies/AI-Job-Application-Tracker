@@ -96,7 +96,7 @@ def smart_actions(current_user: User = Depends(get_current_user), db: Session = 
             recommendation, reason = "Complete missing application details", "Saved applications should be prepared before applying."
         recommendations.append(SmartAction(application_id=item.id, company=item.company, role=item.role, priority=item.priority, recommendation=recommendation, reason=reason))
     priority_order = {"high": 0, "medium": 1, "low": 2}
-    return sorted(recommendations, key=lambda x: (priority_order[x.priority], x.company.lower()))
+    return sorted(recommendations, key=lambda x: (priority_order[x.priority], x.company.lower(), x.role.lower(), x.application_id))
 
 
 @router.get("/{application_id}", response_model=JobApplicationRead)
