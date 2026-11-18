@@ -256,3 +256,32 @@ def test_application_notes_respect_database_limit(client):
     )
     assert accepted_update.status_code == 200
     assert len(accepted_update.json()["notes"]) == 5000
+
+
+def test_smart_actions_use_stable_tiebreakers(client):
+    token = register(client, "stable-actions@example.com")
+    headers = auth_header(token)
+    created_ids = []
+    for role in ("Zebra Engineer", "Alpha Engineer", "Alpha Engineer"):
+        response = client.post(
+            "/api/applications",
+            json={"company": "Acme", "role": role, "priority": "medium"},
+            headers=headers,
+        )
+        assert response.status_code == 201
+        created_ids.append(response.json()["id"])
+
+    response = client.get("/api/applications/smart-actions", headers=headers)
+    assert response.status_code == 200
+    actions = response.json()
+
+    assert [action["role"] for action in actions] == [
+        "Alpha Engineer",
+        "Alpha Engineer",
+        "Zebra Engineer",
+    ]
+    assert [action["application_id"] for action in actions] == [
+        created_ids[1],
+        created_ids[2],
+        created_ids[0],
+    ]
